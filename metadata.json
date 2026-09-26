@@ -1,0 +1,6 @@
+{
+  "name": "HopWeb Studio",
+  "description": "Mobile web code editor & APK creator: write HTML/CSS/JS, live sandbox preview with console, and package web projects into Android APKs offline & online.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
