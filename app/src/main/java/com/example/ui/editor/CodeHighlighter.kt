@@ -4,21 +4,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import java.util.regex.Pattern
 
 object CodeHighlighter {
 
-    val ColorTag = Color(0xFF38BDF8)       // Light blue
-    val ColorAttr = Color(0xFFA78BFA)      // Lavender violet
-    val ColorString = Color(0xFF34D399)    // Mint emerald
-    val ColorKeyword = Color(0xFFF43F5E)   // Rose red
-    val ColorFunction = Color(0xFF60A5FA)  // Electric blue
-    val ColorNumber = Color(0xFFFBBF24)    // Warm amber
-    val ColorComment = Color(0xFF64748B)   // Slate gray
-    val ColorProperty = Color(0xFF22D3EE)  // Cyan
-    val ColorSelector = Color(0xFFF472B6)  // Pink
+    // Light Mode Syntax Highlighting Palette
+    val ColorTag = Color(0xFF0284C7)       // Rich Sky Blue
+    val ColorAttr = Color(0xFF7C3AED)      // Rich Violet
+    val ColorString = Color(0xFF059669)    // Rich Emerald
+    val ColorKeyword = Color(0xFFE11D48)   // Rich Rose Red
+    val ColorFunction = Color(0xFF2563EB)  // Rich Royal Blue
+    val ColorNumber = Color(0xFFD97706)    // Rich Amber
+    val ColorComment = Color(0xFF64748B)   // Slate Gray
+    val ColorProperty = Color(0xFF0284C7)  // Cyan Blue
+    val ColorSelector = Color(0xFFBE185D)  // Deep Pink
 
     private val HTML_TAG_PATTERN = Pattern.compile("</?[a-zA-Z0-9_-]+|/?>")
     private val HTML_ATTR_PATTERN = Pattern.compile("\\s+([a-zA-Z0-9_-]+)(?==)")
@@ -42,7 +42,6 @@ object CodeHighlighter {
 
     fun highlight(text: String, extension: String): AnnotatedString {
         if (text.length > 50000) {
-            // Guard for extremely large files to prevent UI lag
             return AnnotatedString(text)
         }
 
@@ -54,52 +53,35 @@ object CodeHighlighter {
                 "css" -> highlightCss(text)
                 "js", "javascript" -> highlightJs(text)
                 "json" -> highlightJson(text)
-                else -> {
-                    // Try generic highlight
-                    highlightGeneric(text)
-                }
+                else -> highlightGeneric(text)
             }
         }
     }
 
     private fun AnnotatedString.Builder.highlightHtml(text: String) {
-        // Tag names
         applyRegex(text, HTML_TAG_PATTERN, ColorTag, FontWeight.SemiBold)
-        // Attributes
         applyRegex(text, HTML_ATTR_PATTERN, ColorAttr)
-        // Strings
         applyRegex(text, STRING_DOUBLE_PATTERN, ColorString)
         applyRegex(text, STRING_SINGLE_PATTERN, ColorString)
-        // Comments
         applyRegex(text, HTML_COMMENT_PATTERN, ColorComment)
     }
 
     private fun AnnotatedString.Builder.highlightCss(text: String) {
-        // Selectors
         applyRegex(text, CSS_SELECTOR_PATTERN, ColorSelector, FontWeight.Medium)
-        // Properties
         applyRegex(text, CSS_PROPERTY_PATTERN, ColorProperty)
-        // Numbers & units
         applyRegex(text, NUMBER_PATTERN, ColorNumber)
-        // Strings
         applyRegex(text, STRING_DOUBLE_PATTERN, ColorString)
         applyRegex(text, STRING_SINGLE_PATTERN, ColorString)
-        // Comments
         applyRegex(text, BLOCK_COMMENT_PATTERN, ColorComment)
     }
 
     private fun AnnotatedString.Builder.highlightJs(text: String) {
-        // Keywords
         applyRegex(text, JS_KEYWORD_PATTERN, ColorKeyword, FontWeight.Bold)
-        // Builtins
         applyRegex(text, JS_BUILTIN_PATTERN, ColorFunction, FontWeight.Medium)
-        // Numbers
         applyRegex(text, NUMBER_PATTERN, ColorNumber)
-        // Strings
         applyRegex(text, STRING_DOUBLE_PATTERN, ColorString)
         applyRegex(text, STRING_SINGLE_PATTERN, ColorString)
         applyRegex(text, STRING_BACKTICK_PATTERN, ColorString)
-        // Comments
         applyRegex(text, LINE_COMMENT_PATTERN, ColorComment)
         applyRegex(text, BLOCK_COMMENT_PATTERN, ColorComment)
     }
@@ -167,7 +149,6 @@ object CodeHighlighter {
 
             result.append("  ".repeat(indent)).append(line).append("\n")
 
-            // Check if line opens a non-void tag without closing it on the same line
             val isClosing = line.startsWith("</")
             val isComment = line.startsWith("<!--") || line.startsWith("<!DOCTYPE")
             val isSelfClosing = line.endsWith("/>") || line.contains("</")

@@ -3,8 +3,6 @@ package com.example.data.repository
 import com.example.data.local.ProjectDao
 import com.example.data.model.ProjectEntity
 import com.example.data.model.ProjectFileEntity
-import com.example.data.model.StarterTemplates
-import com.example.data.model.TemplateDefinition
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
@@ -22,24 +20,17 @@ class ProjectRepository(private val projectDao: ProjectDao) {
     suspend fun getFilesForProjectSync(projectId: String): List<ProjectFileEntity> =
         projectDao.getFilesForProjectSync(projectId)
 
-    suspend fun seedInitialProjectsIfNeeded() {
-        val current = projectDao.getFilesForProjectSync("check")
-        // If projects table is empty, seed Neon Space Arcade and Cyber Calc
-        // We will check by reading the first item
-        // Let's create starter projects if none exist
-        createProjectFromTemplate(StarterTemplates.templates[0]) // Neon Arcade
-        createProjectFromTemplate(StarterTemplates.templates[1]) // Cyber Calc
-    }
-
     suspend fun createProject(
         name: String,
         description: String = "",
         category: String = "Web App",
         iconType: String = "code",
-        accentColor: Long = 0xFF38BDF8,
+        accentColor: Long = 0xFF2563EB,
         packageName: String = "com.hopweb.app." + name.lowercase().replace("[^a-z0-9]".toRegex(), "")
     ): String {
         val projectId = UUID.randomUUID().toString()
+        val safePackage = if (packageName.length < 5) "com.hopweb.app.myproject" else packageName
+
         val project = ProjectEntity(
             id = projectId,
             name = name,
@@ -47,13 +38,13 @@ class ProjectRepository(private val projectDao: ProjectDao) {
             category = category,
             iconType = iconType,
             accentColor = accentColor,
-            packageName = if (packageName.length < 5) "com.hopweb.app.myproject" else packageName,
+            packageName = safePackage,
             createdAt = System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis()
         )
         projectDao.insertProject(project)
 
-        // Create default boilerplate files
+        // Clean starter template: index.html, style.css, script.js
         val htmlFile = ProjectFileEntity(
             projectId = projectId,
             name = "index.html",
@@ -62,16 +53,16 @@ class ProjectRepository(private val projectDao: ProjectDao) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>$name</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>🚀 Welcome to $name</h1>
-    <p>Created with HopWeb Mobile Code Studio</p>
-    <button id="action-btn">Click Me!</button>
-    <p id="msg"></p>
+  <div class="app-card">
+    <div class="icon">🚀</div>
+    <h1>$name</h1>
+    <p>Build, test, and convert this project to an APK!</p>
+    <button id="counter-btn">Taps: <span id="tap-count">0</span></button>
   </div>
   <script src="script.js"></script>
 </body>
@@ -83,56 +74,60 @@ class ProjectRepository(private val projectDao: ProjectDao) {
             projectId = projectId,
             name = "style.css",
             extension = "css",
-            content = """body {
+            content = """* {
+  box-sizing: border-box;
   margin: 0;
-  padding: 24px;
-  background: #0f172a;
-  color: #f8fafc;
+  padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+body {
+  background: #f8fafc;
+  color: #0f172a;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  box-sizing: border-box;
+  padding: 20px;
 }
-.container {
-  text-align: center;
-  background: #1e293b;
-  padding: 32px 24px;
+.app-card {
+  background: #ffffff;
   border-radius: 20px;
-  border: 1px solid #334155;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-  max-width: 400px;
+  padding: 32px 24px;
   width: 100%;
+  max-width: 360px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+.icon {
+  font-size: 48px;
+  margin-bottom: 12px;
 }
 h1 {
   font-size: 22px;
+  color: #2563eb;
   margin-bottom: 8px;
-  color: #38bdf8;
 }
 p {
-  color: #94a3b8;
   font-size: 14px;
+  color: #64748b;
   margin-bottom: 24px;
+  line-height: 1.5;
 }
 button {
-  background: linear-gradient(135deg, #38bdf8, #818cf8);
-  color: #0f172a;
-  font-weight: 700;
-  font-size: 15px;
+  background: #2563eb;
+  color: #ffffff;
   border: none;
-  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
   padding: 12px 28px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: transform 0.1s ease;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  transition: transform 0.1s;
 }
 button:active {
   transform: scale(0.96);
-}
-#msg {
-  margin-top: 18px;
-  font-weight: 600;
-  color: #10b981;
 }"""
         )
 
@@ -140,49 +135,20 @@ button:active {
             projectId = projectId,
             name = "script.js",
             extension = "js",
-            content = """console.log("App loaded successfully!");
+            content = """console.log("App '$name' loaded successfully!");
 
-let count = 0;
-const btn = document.getElementById("action-btn");
-const msg = document.getElementById("msg");
+let taps = 0;
+const btn = document.getElementById("counter-btn");
+const tapCount = document.getElementById("tap-count");
 
 btn.addEventListener("click", () => {
-  count++;
-  msg.textContent = "Button tapped " + count + " time(s)! ⚡";
-  console.log("Interactive click event triggered. Count:", count);
+  taps++;
+  tapCount.textContent = taps;
+  console.log("Button tapped. Total taps:", taps);
 });"""
         )
 
         projectDao.insertFiles(listOf(htmlFile, cssFile, jsFile))
-        return projectId
-    }
-
-    suspend fun createProjectFromTemplate(template: TemplateDefinition): String {
-        val projectId = UUID.randomUUID().toString()
-        val project = ProjectEntity(
-            id = projectId,
-            name = template.name,
-            description = template.description,
-            category = template.category,
-            iconType = template.iconType,
-            accentColor = template.accentColor,
-            packageName = template.defaultPackageName,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
-        )
-        projectDao.insertProject(project)
-
-        val files = template.files.map { (fileName, fileContent) ->
-            val ext = fileName.substringAfterLast(".", "txt")
-            ProjectFileEntity(
-                projectId = projectId,
-                name = fileName,
-                extension = ext,
-                content = fileContent,
-                isEntry = fileName.equals("index.html", ignoreCase = true)
-            )
-        }
-        projectDao.insertFiles(files)
         return projectId
     }
 

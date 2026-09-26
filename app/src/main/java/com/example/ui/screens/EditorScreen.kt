@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,8 +38,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -101,7 +102,7 @@ fun EditorScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back to Projects",
-                            tint = Color(0xFFF1F5F9)
+                            tint = Color(0xFF0F172A)
                         )
                     }
                 },
@@ -111,37 +112,37 @@ fun EditorScreen(
                             text = project.name,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            color = Color(0xFFF1F5F9),
+                            color = Color(0xFF0F172A),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = activeFile?.name ?: "No file selected",
-                            fontSize = 11.sp,
-                            color = Color(0xFF38BDF8)
+                            text = activeFile?.name ?: "No file",
+                            fontSize = 12.sp,
+                            color = Color(0xFF2563EB)
                         )
                     }
                 },
                 actions = {
                     // Undo
                     IconButton(onClick = { viewModel.undo() }) {
-                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo", tint = Color(0xFF94A3B8))
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo", tint = Color(0xFF475569))
                     }
                     // Redo
                     IconButton(onClick = { viewModel.redo() }) {
-                        Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo", tint = Color(0xFF94A3B8))
+                        Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo", tint = Color(0xFF475569))
                     }
                     // Search in file
                     IconButton(onClick = { viewModel.toggleSearch() }) {
                         Icon(
                             Icons.Default.Search,
                             contentDescription = "Search",
-                            tint = if (isSearching) Color(0xFF38BDF8) else Color(0xFF94A3B8)
+                            tint = if (isSearching) Color(0xFF2563EB) else Color(0xFF475569)
                         )
                     }
                     // Format code
                     IconButton(onClick = { viewModel.formatCurrentCode() }) {
-                        Icon(Icons.Default.FormatAlignLeft, contentDescription = "Format Code", tint = Color(0xFF94A3B8))
+                        Icon(Icons.Default.FormatAlignLeft, contentDescription = "Format Code", tint = Color(0xFF475569))
                     }
                     // Make APK button
                     IconButton(
@@ -151,11 +152,11 @@ fun EditorScreen(
                         },
                         modifier = Modifier.testTag("btn_goto_apk")
                     ) {
-                        Icon(Icons.Default.Android, contentDescription = "Build APK", tint = Color(0xFF10B981))
+                        Icon(Icons.Default.Android, contentDescription = "Build APK", tint = Color(0xFF16A34A))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0F172A)
+                    containerColor = Color.White
                 )
             )
         },
@@ -166,11 +167,11 @@ fun EditorScreen(
                     viewModel.refreshPreview()
                     viewModel.navigateTo(AppScreen.LIVE_PREVIEW)
                 },
-                containerColor = Color(0xFF10B981),
-                contentColor = Color(0xFF0F172A),
+                containerColor = Color(0xFF16A34A),
+                contentColor = Color.White,
                 shape = CircleShape,
                 modifier = Modifier
-                    .padding(bottom = 48.dp) // Leave space above symbol keyboard
+                    .padding(bottom = 52.dp)
                     .testTag("fab_run_preview")
             ) {
                 Row(
@@ -183,7 +184,7 @@ fun EditorScreen(
                 }
             }
         },
-        containerColor = Color(0xFF0F172A),
+        containerColor = Color(0xFFF8FAFC),
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         Column(
@@ -191,10 +192,11 @@ fun EditorScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Search & Replace Bar
+            // Search & Replace Bar (Light Mode)
             if (isSearching) {
                 Surface(
-                    color = Color(0xFF1E293B),
+                    color = Color(0xFFF1F5F9),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
@@ -208,21 +210,29 @@ fun EditorScreen(
                                 onValueChange = { viewModel.setSearchQuery(it) },
                                 placeholder = { Text("Find...", fontSize = 12.sp) },
                                 singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White
+                                ),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(48.dp)
+                                    .height(46.dp)
                             )
                             OutlinedTextField(
                                 value = replaceText,
                                 onValueChange = { replaceText = it },
                                 placeholder = { Text("Replace with...", fontSize = 12.sp) },
                                 singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White
+                                ),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(48.dp)
+                                    .height(46.dp)
                             )
                             IconButton(onClick = { viewModel.toggleSearch() }, modifier = Modifier.size(32.dp)) {
-                                Icon(Icons.Default.Close, contentDescription = "Close Search", tint = Color(0xFF94A3B8))
+                                Icon(Icons.Default.Close, contentDescription = "Close Search", tint = Color(0xFF64748B))
                             }
                         }
                         Row(
@@ -234,21 +244,22 @@ fun EditorScreen(
                             TextButton(
                                 onClick = { viewModel.replaceSearchMatch(replaceText, replaceAll = false) }
                             ) {
-                                Text("Replace Next", fontSize = 11.sp, color = Color(0xFF38BDF8))
+                                Text("Replace Next", fontSize = 12.sp, color = Color(0xFF2563EB))
                             }
                             TextButton(
                                 onClick = { viewModel.replaceSearchMatch(replaceText, replaceAll = true) }
                             ) {
-                                Text("Replace All", fontSize = 11.sp, color = Color(0xFF38BDF8))
+                                Text("Replace All", fontSize = 12.sp, color = Color(0xFF2563EB))
                             }
                         }
                     }
                 }
             }
 
-            // File Tabs Bar
+            // File Tabs Bar (Light Mode)
             Surface(
-                color = Color(0xFF090D16),
+                color = Color(0xFFF1F5F9),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(44.dp)
@@ -262,19 +273,21 @@ fun EditorScreen(
                     items(projectFiles, key = { it.id }) { file ->
                         val isSelected = file.id == activeFile?.id
                         val extColor = when (file.extension.lowercase()) {
-                            "html" -> Color(0xFFE34F26)
-                            "css" -> Color(0xFF264DE4)
-                            "js" -> Color(0xFFF7DF1E)
-                            else -> Color(0xFF38BDF8)
+                            "html" -> Color(0xFFE11D48)
+                            "css" -> Color(0xFF2563EB)
+                            "js" -> Color(0xFFD97706)
+                            else -> Color(0xFF0284C7)
                         }
 
                         Surface(
                             onClick = { viewModel.selectFile(file) },
-                            shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
-                            color = if (isSelected) Color(0xFF0F172A) else Color(0xFF161F33),
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) Color.White else Color.Transparent,
+                            border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)) else null,
+                            shadowElevation = if (isSelected) 1.dp else 0.dp,
                             modifier = Modifier
                                 .padding(horizontal = 2.dp)
-                                .height(36.dp)
+                                .height(34.dp)
                                 .testTag("file_tab_${file.name}")
                         ) {
                             Row(
@@ -291,7 +304,7 @@ fun EditorScreen(
                                     text = file.name,
                                     fontSize = 12.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected) Color(0xFFF1F5F9) else Color(0xFF94A3B8)
+                                    color = if (isSelected) Color(0xFF0F172A) else Color(0xFF64748B)
                                 )
 
                                 if (!file.isEntry && projectFiles.size > 1) {
@@ -303,7 +316,7 @@ fun EditorScreen(
                                         Icon(
                                             Icons.Default.Close,
                                             contentDescription = "Close File",
-                                            tint = Color(0xFF64748B),
+                                            tint = Color(0xFF94A3B8),
                                             modifier = Modifier.size(12.dp)
                                         )
                                     }
@@ -321,7 +334,7 @@ fun EditorScreen(
                                 .padding(start = 4.dp)
                                 .testTag("btn_add_file")
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add File", tint = Color(0xFF38BDF8))
+                            Icon(Icons.Default.Add, contentDescription = "Add File", tint = Color(0xFF2563EB))
                         }
                     }
                 }
@@ -340,17 +353,17 @@ fun EditorScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF0F172A)),
+                        .background(Color.White),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Select or create a file to start editing", color = Color(0xFF64748B))
+                    Text("Select or create a file to start editing", color = Color(0xFF94A3B8))
                 }
             }
         }
     }
 
     if (showNewFileDialog) {
-        CreateFileDialog(
+        CreateFileDialogLight(
             onDismiss = { showNewFileDialog = false },
             onCreate = { fileName ->
                 showNewFileDialog = false
@@ -362,31 +375,31 @@ fun EditorScreen(
     fileToDelete?.let { file ->
         AlertDialog(
             onDismissRequest = { fileToDelete = null },
-            title = { Text("Delete ${file.name}?", color = Color(0xFFF1F5F9)) },
-            text = { Text("Are you sure you want to remove this file from the project?", color = Color(0xFF94A3B8)) },
+            title = { Text("Delete ${file.name}?", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to remove this file from the project?", color = Color(0xFF64748B)) },
             confirmButton = {
                 Button(
                     onClick = {
                         viewModel.deleteFile(file.id)
                         fileToDelete = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF43F5E))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11D48))
                 ) {
                     Text("Delete")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { fileToDelete = null }) {
-                    Text("Cancel", color = Color(0xFF94A3B8))
+                    Text("Cancel", color = Color(0xFF64748B))
                 }
             },
-            containerColor = Color(0xFF1E293B)
+            containerColor = Color.White
         )
     }
 }
 
 @Composable
-fun CreateFileDialog(
+fun CreateFileDialogLight(
     onDismiss: () -> Unit,
     onCreate: (fileName: String) -> Unit
 ) {
@@ -395,21 +408,25 @@ fun CreateFileDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add File to Project", fontWeight = FontWeight.Bold, color = Color(0xFFF1F5F9)) },
+        title = { Text("Add File to Project", fontWeight = FontWeight.Bold, color = Color(0xFF0F172A)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = fileName,
                     onValueChange = { fileName = it },
                     label = { Text("File Name") },
-                    placeholder = { Text("e.g. script2.js, about.html") },
+                    placeholder = { Text("e.g. page2.html, app.css") },
                     singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF2563EB),
+                        focusedLabelColor = Color(0xFF2563EB)
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("input_new_filename")
                 )
 
-                Text("Quick Suffixes:", fontSize = 12.sp, color = Color(0xFF94A3B8))
+                Text("Quick Extensions:", fontSize = 12.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Medium)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     suggestedExtensions.forEach { ext ->
                         Surface(
@@ -418,12 +435,14 @@ fun CreateFileDialog(
                                 fileName = if (base.isEmpty()) "file$ext" else "$base$ext"
                             },
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFF1E293B)
+                            color = Color(0xFFEFF6FF),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE))
                         ) {
                             Text(
                                 text = ext,
-                                fontSize = 11.sp,
-                                color = Color(0xFF38BDF8),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF2563EB),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -439,7 +458,7 @@ fun CreateFileDialog(
                     }
                 },
                 enabled = fileName.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF38BDF8), contentColor = Color(0xFF0F172A)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
                 modifier = Modifier.testTag("btn_confirm_add_file")
             ) {
                 Text("Add File", fontWeight = FontWeight.Bold)
@@ -447,9 +466,9 @@ fun CreateFileDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color(0xFF94A3B8))
+                Text("Cancel", color = Color(0xFF64748B))
             }
         },
-        containerColor = Color(0xFF161F33)
+        containerColor = Color.White
     )
 }

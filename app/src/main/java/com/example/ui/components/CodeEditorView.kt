@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
@@ -68,28 +69,29 @@ fun CodeEditorView(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF0F172A))
+            .background(Color(0xFFFFFFFF))
     ) {
-        // Main Editor with Line Numbers
+        // Main Editor with Line Numbers Gutter
         Row(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            // Line Numbers Gutter
+            // Line Numbers Gutter (Light Mode)
             Column(
                 modifier = Modifier
-                    .width(44.dp)
+                    .width(46.dp)
                     .fillMaxHeight()
-                    .background(Color(0xFF090D16))
+                    .background(Color(0xFFF8FAFC))
+                    .border(width = 1.dp, color = Color(0xFFE2E8F0))
                     .verticalScroll(verticalScrollState)
-                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                    .padding(vertical = 12.dp, horizontal = 6.dp),
                 horizontalAlignment = Alignment.End
             ) {
                 for (i in 1..linesCount) {
                     Text(
                         text = "$i",
-                        color = Color(0xFF475569),
+                        color = Color(0xFF94A3B8),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
                         lineHeight = 20.sp,
@@ -99,14 +101,15 @@ fun CodeEditorView(
                 }
             }
 
-            // Code Text Field
+            // Code Text Field (Light Mode)
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
+                    .background(Color.White)
                     .horizontalScroll(horizontalScrollState)
                     .verticalScroll(verticalScrollState)
-                    .padding(start = 12.dp, end = 24.dp, top = 12.dp, bottom = 24.dp)
+                    .padding(start = 12.dp, end = 24.dp, top = 12.dp, bottom = 32.dp)
             ) {
                 BasicTextField(
                     value = textFieldValue,
@@ -115,9 +118,9 @@ fun CodeEditorView(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
                         lineHeight = 20.sp,
-                        color = Color(0xFFE2E8F0)
+                        color = Color(0xFF0F172A)
                     ),
-                    cursorBrush = SolidColor(Color(0xFF38BDF8)),
+                    cursorBrush = SolidColor(Color(0xFF2563EB)),
                     visualTransformation = syntaxTransformation,
                     modifier = Modifier
                         .fillMaxSize()
@@ -126,13 +129,13 @@ fun CodeEditorView(
             }
         }
 
-        // Quick Symbol Keyboard Toolbar
-        QuickSymbolToolbar(onInsertSymbol = onInsertSymbol)
+        // Quick Symbol Keyboard Toolbar (Light Mode)
+        QuickSymbolToolbarLight(onInsertSymbol = onInsertSymbol)
     }
 }
 
 @Composable
-fun QuickSymbolToolbar(
+fun QuickSymbolToolbarLight(
     onInsertSymbol: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -143,11 +146,11 @@ fun QuickSymbolToolbar(
     )
 
     Surface(
-        color = Color(0xFF1E293B),
-        shadowElevation = 8.dp,
+        color = Color(0xFFF1F5F9),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(50.dp)
     ) {
         LazyRow(
             modifier = Modifier
@@ -168,10 +171,12 @@ fun QuickSymbolToolbar(
                         onInsertSymbol(toInsert)
                     },
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF334155),
+                    color = Color.White,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                    shadowElevation = 1.dp,
                     modifier = Modifier
                         .padding(horizontal = 3.dp)
-                        .height(34.dp)
+                        .height(36.dp)
                         .testTag("quick_sym_$sym")
                 ) {
                     Box(
@@ -180,10 +185,10 @@ fun QuickSymbolToolbar(
                     ) {
                         Text(
                             text = sym,
-                            color = if (sym.length > 2) Color(0xFF38BDF8) else Color(0xFFF1F5F9),
+                            color = if (sym.length > 2) Color(0xFF2563EB) else Color(0xFF1E293B),
                             fontFamily = FontFamily.Monospace,
                             fontSize = 13.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

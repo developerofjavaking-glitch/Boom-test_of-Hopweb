@@ -2,7 +2,6 @@ package com.example.ui.screens
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Bitmap
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.JsResult
@@ -17,7 +16,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,11 +29,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -44,7 +40,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.ClearAll
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
@@ -52,24 +47,15 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -98,9 +84,6 @@ import com.example.data.model.ProjectEntity
 import com.example.ui.viewmodel.AppScreen
 import com.example.ui.viewmodel.HopWebViewModel
 import com.example.ui.viewmodel.ViewportMode
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -153,22 +136,22 @@ fun SandboxPreviewScreen(
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
-                                tint = Color(0xFFF1F5F9)
+                                tint = Color(0xFF0F172A)
                             )
                         }
                     },
                     title = {
                         Column {
                             Text(
-                                text = "Live Sandbox",
+                                text = "Live Sandbox Preview",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
-                                color = Color(0xFFF1F5F9)
+                                color = Color(0xFF0F172A)
                             )
                             Text(
                                 text = project.name,
-                                fontSize = 11.sp,
-                                color = Color(0xFF38BDF8)
+                                fontSize = 12.sp,
+                                color = Color(0xFF2563EB)
                             )
                         }
                     },
@@ -176,19 +159,19 @@ fun SandboxPreviewScreen(
                         // Viewport Selector
                         Box {
                             IconButton(onClick = { showViewportMenu = true }) {
-                                Icon(Icons.Default.Devices, contentDescription = "Viewport", tint = Color(0xFF94A3B8))
+                                Icon(Icons.Default.Devices, contentDescription = "Viewport", tint = Color(0xFF475569))
                             }
                             DropdownMenu(
                                 expanded = showViewportMenu,
                                 onDismissRequest = { showViewportMenu = false },
-                                modifier = Modifier.background(Color(0xFF1E293B))
+                                modifier = Modifier.background(Color.White)
                             ) {
                                 ViewportMode.values().forEach { mode ->
                                     DropdownMenuItem(
                                         text = {
                                             Text(
                                                 text = mode.title,
-                                                color = if (viewportMode == mode) Color(0xFF38BDF8) else Color(0xFFF1F5F9),
+                                                color = if (viewportMode == mode) Color(0xFF2563EB) else Color(0xFF0F172A),
                                                 fontWeight = if (viewportMode == mode) FontWeight.Bold else FontWeight.Normal
                                             )
                                         },
@@ -209,7 +192,7 @@ fun SandboxPreviewScreen(
                             },
                             modifier = Modifier.testTag("btn_refresh_preview")
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color(0xFF94A3B8))
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color(0xFF475569))
                         }
 
                         // DevTools Console Toggle
@@ -221,7 +204,7 @@ fun SandboxPreviewScreen(
                                 badge = {
                                     if (errorCount > 0) {
                                         Badge(
-                                            containerColor = Color(0xFFF43F5E),
+                                            containerColor = Color(0xFFE11D48),
                                             contentColor = Color.White
                                         ) {
                                             Text("$errorCount")
@@ -232,14 +215,14 @@ fun SandboxPreviewScreen(
                                 Icon(
                                     Icons.Default.Terminal,
                                     contentDescription = "DevTools",
-                                    tint = if (isDevToolsExpanded) Color(0xFF38BDF8) else Color(0xFF94A3B8)
+                                    tint = if (isDevToolsExpanded) Color(0xFF2563EB) else Color(0xFF475569)
                                 )
                             }
                         }
 
                         // Fullscreen Preview Toggle
                         IconButton(onClick = { isFullscreen = true }) {
-                            Icon(Icons.Default.Fullscreen, contentDescription = "Fullscreen", tint = Color(0xFF94A3B8))
+                            Icon(Icons.Default.Fullscreen, contentDescription = "Fullscreen", tint = Color(0xFF475569))
                         }
 
                         // Build APK shortcut
@@ -247,16 +230,16 @@ fun SandboxPreviewScreen(
                             onClick = { viewModel.navigateTo(AppScreen.APK_BUILDER) },
                             modifier = Modifier.testTag("btn_preview_to_apk")
                         ) {
-                            Icon(Icons.Default.Android, contentDescription = "Make APK", tint = Color(0xFF10B981))
+                            Icon(Icons.Default.Android, contentDescription = "Make APK", tint = Color(0xFF16A34A))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color(0xFF0F172A)
+                        containerColor = Color.White
                     )
                 )
             }
         },
-        containerColor = Color(0xFF090D16),
+        containerColor = Color(0xFFF1F5F9),
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         Box(
@@ -270,7 +253,7 @@ fun SandboxPreviewScreen(
                     modifier = Modifier
                         .weight(if (isDevToolsExpanded) 0.55f else 1f)
                         .fillMaxWidth()
-                        .background(Color(0xFF090D16)),
+                        .background(Color(0xFFF1F5F9)),
                     contentAlignment = Alignment.Center
                 ) {
                     val containerModifier = when (val width = viewportMode.widthDp) {
@@ -279,7 +262,7 @@ fun SandboxPreviewScreen(
                             .width(width.dp)
                             .fillMaxHeight()
                             .padding(vertical = if (isFullscreen) 0.dp else 12.dp)
-                            .border(1.dp, Color(0xFF334155), RoundedCornerShape(16.dp))
+                            .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(16.dp))
                             .clip(RoundedCornerShape(16.dp))
                     }
 
@@ -298,7 +281,6 @@ fun SandboxPreviewScreen(
                         },
                         update = { wv ->
                             webViewRef = wv
-                            // Only reload if HTML changed
                             wv.loadDataWithBaseURL(
                                 "https://hopweb.local/",
                                 bundledHtml,
@@ -311,33 +293,34 @@ fun SandboxPreviewScreen(
                     )
                 }
 
-                // DevTools Sheet (expandable)
+                // DevTools Sheet (Light Mode)
                 if (isDevToolsExpanded && !isFullscreen) {
                     Surface(
-                        color = Color(0xFF111827),
-                        shadowElevation = 16.dp,
+                        color = Color.White,
+                        shadowElevation = 8.dp,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
                         modifier = Modifier
                             .weight(0.45f)
                             .fillMaxWidth()
-                            .border(width = 1.dp, color = Color(0xFF1F2937))
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
                             // DevTools Header / Tabs
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(Color(0xFF161F33))
+                                    .background(Color(0xFFF8FAFC))
+                                    .border(1.dp, Color(0xFFE2E8F0))
                                     .padding(horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    DevToolsTabButton(
+                                    DevToolsTabButtonLight(
                                         title = "Console (${consoleLogs.size})",
                                         isSelected = devToolsTabIndex == 0,
                                         onClick = { devToolsTabIndex = 0 }
                                     )
-                                    DevToolsTabButton(
+                                    DevToolsTabButtonLight(
                                         title = "Bundled Source",
                                         isSelected = devToolsTabIndex == 1,
                                         onClick = { devToolsTabIndex = 1 }
@@ -350,21 +333,20 @@ fun SandboxPreviewScreen(
                                             onClick = { viewModel.clearConsole() },
                                             modifier = Modifier.size(32.dp)
                                         ) {
-                                            Icon(Icons.Default.ClearAll, contentDescription = "Clear Console", tint = Color(0xFF94A3B8), modifier = Modifier.size(18.dp))
+                                            Icon(Icons.Default.ClearAll, contentDescription = "Clear Console", tint = Color(0xFF64748B), modifier = Modifier.size(18.dp))
                                         }
                                     }
                                     IconButton(
                                         onClick = { isDevToolsExpanded = false },
                                         modifier = Modifier.size(32.dp)
                                     ) {
-                                        Icon(Icons.Default.FullscreenExit, contentDescription = "Close DevTools", tint = Color(0xFF94A3B8), modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.FullscreenExit, contentDescription = "Close DevTools", tint = Color(0xFF64748B), modifier = Modifier.size(18.dp))
                                     }
                                 }
                             }
 
                             if (devToolsTabIndex == 0) {
-                                // Console Tab Content
-                                ConsoleTabContent(
+                                ConsoleTabContentLight(
                                     logs = consoleLogs,
                                     activeFilter = consoleFilter,
                                     onFilterChange = { viewModel.setConsoleFilter(it) },
@@ -382,21 +364,20 @@ fun SandboxPreviewScreen(
                                     modifier = Modifier.weight(1f)
                                 )
                             } else {
-                                // Bundled Source Tab Content
                                 SelectionContainer(
                                     modifier = Modifier
                                         .weight(1f)
                                         .fillMaxWidth()
-                                        .padding(8.dp)
+                                        .padding(12.dp)
                                 ) {
                                     LazyColumn {
                                         item {
                                             Text(
                                                 text = bundledHtml,
                                                 fontFamily = FontFamily.Monospace,
-                                                fontSize = 11.sp,
-                                                color = Color(0xFFCBD5E1),
-                                                lineHeight = 16.sp
+                                                fontSize = 12.sp,
+                                                color = Color(0xFF334155),
+                                                lineHeight = 18.sp
                                             )
                                         }
                                     }
@@ -407,11 +388,11 @@ fun SandboxPreviewScreen(
                 }
             }
 
-            // Floating exit button when in Fullscreen mode
+            // Floating exit button in Fullscreen mode
             if (isFullscreen) {
                 Surface(
                     shape = CircleShape,
-                    color = Color(0xCC000000),
+                    color = Color(0xCC0F172A),
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(16.dp)
@@ -426,7 +407,7 @@ fun SandboxPreviewScreen(
 }
 
 @Composable
-fun DevToolsTabButton(
+fun DevToolsTabButtonLight(
     title: String,
     isSelected: Boolean,
     onClick: () -> Unit
@@ -440,13 +421,13 @@ fun DevToolsTabButton(
             text = title,
             fontSize = 12.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) Color(0xFF38BDF8) else Color(0xFF94A3B8)
+            color = if (isSelected) Color(0xFF2563EB) else Color(0xFF64748B)
         )
     }
 }
 
 @Composable
-fun ConsoleTabContent(
+fun ConsoleTabContentLight(
     logs: List<ConsoleLogEntry>,
     activeFilter: LogLevel?,
     onFilterChange: (LogLevel?) -> Unit,
@@ -469,26 +450,27 @@ fun ConsoleTabContent(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // Filter pills row
+        // Filter pills row (Light Mode)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0F172A))
+                .background(Color(0xFFF8FAFC))
+                .border(1.dp, Color(0xFFE2E8F0))
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            FilterChip(label = "All", isSelected = activeFilter == null, onClick = { onFilterChange(null) })
-            FilterChip(label = "Log", isSelected = activeFilter == LogLevel.LOG, color = Color(0xFF38BDF8), onClick = { onFilterChange(LogLevel.LOG) })
-            FilterChip(label = "Warn", isSelected = activeFilter == LogLevel.WARN, color = Color(0xFFFBBF24), onClick = { onFilterChange(LogLevel.WARN) })
-            FilterChip(label = "Error", isSelected = activeFilter == LogLevel.ERROR, color = Color(0xFFF43F5E), onClick = { onFilterChange(LogLevel.ERROR) })
+            FilterChipLight(label = "All", isSelected = activeFilter == null, onClick = { onFilterChange(null) })
+            FilterChipLight(label = "Log", isSelected = activeFilter == LogLevel.LOG, color = Color(0xFF2563EB), onClick = { onFilterChange(LogLevel.LOG) })
+            FilterChipLight(label = "Warn", isSelected = activeFilter == LogLevel.WARN, color = Color(0xFFD97706), onClick = { onFilterChange(LogLevel.WARN) })
+            FilterChipLight(label = "Error", isSelected = activeFilter == LogLevel.ERROR, color = Color(0xFFE11D48), onClick = { onFilterChange(LogLevel.ERROR) })
         }
 
-        // Log Items List
+        // Log Items List (Light Mode)
         SelectionContainer(modifier = Modifier.weight(1f)) {
             if (filteredLogs.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No console logs yet. Interact with the preview to test.", color = Color(0xFF64748B), fontSize = 12.sp)
+                    Text("No console logs yet. Interact with the preview to test.", color = Color(0xFF94A3B8), fontSize = 12.sp)
                 }
             } else {
                 LazyColumn(
@@ -498,16 +480,17 @@ fun ConsoleTabContent(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(filteredLogs, key = { it.id }) { log ->
-                        val (bg, badgeColor, label) = when (log.level) {
-                            LogLevel.LOG -> Triple(Color(0xFF1E293B), Color(0xFF38BDF8), "LOG")
-                            LogLevel.INFO -> Triple(Color(0xFF1E293B), Color(0xFF818CF8), "INFO")
-                            LogLevel.WARN -> Triple(Color(0xFF332A15), Color(0xFFFBBF24), "WARN")
-                            LogLevel.ERROR -> Triple(Color(0xFF36151E), Color(0xFFF43F5E), "ERR")
+                        val (bg, badgeBg, badgeColor, label) = when (log.level) {
+                            LogLevel.LOG -> Quad(Color(0xFFF8FAFC), Color(0xFFEFF6FF), Color(0xFF2563EB), "LOG")
+                            LogLevel.INFO -> Quad(Color(0xFFF8FAFC), Color(0xFFF3E8FF), Color(0xFF7C3AED), "INFO")
+                            LogLevel.WARN -> Quad(Color(0xFFFFFBEB), Color(0xFFFEF3C7), Color(0xFFD97706), "WARN")
+                            LogLevel.ERROR -> Quad(Color(0xFFFFF1F2), Color(0xFFFFE4E6), Color(0xFFE11D48), "ERR")
                         }
 
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = bg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -516,11 +499,11 @@ fun ConsoleTabContent(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(4.dp),
-                                    color = badgeColor.copy(alpha = 0.2f)
+                                    color = badgeBg
                                 ) {
                                     Text(
                                         text = label,
-                                        fontSize = 9.sp,
+                                        fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = badgeColor,
                                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -530,16 +513,16 @@ fun ConsoleTabContent(
                                 Text(
                                     text = log.message,
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
-                                    color = Color(0xFFE2E8F0),
-                                    lineHeight = 15.sp,
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF0F172A),
+                                    lineHeight = 16.sp,
                                     modifier = Modifier.weight(1f)
                                 )
                                 log.lineNumber?.let { line ->
                                     Text(
                                         text = ":$line",
                                         fontSize = 10.sp,
-                                        color = Color(0xFF64748B),
+                                        color = Color(0xFF94A3B8),
                                         fontFamily = FontFamily.Monospace
                                     )
                                 }
@@ -550,27 +533,30 @@ fun ConsoleTabContent(
             }
         }
 
-        // Interactive JS REPL Bar
+        // Interactive JS REPL Bar (Light Mode)
         Surface(
-            color = Color(0xFF161F33),
+            color = Color(0xFFF8FAFC),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(">", color = Color(0xFF38BDF8), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                Text(">", color = Color(0xFF2563EB), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 Spacer(modifier = Modifier.width(6.dp))
                 OutlinedTextField(
                     value = replCommand,
                     onValueChange = onReplCommandChange,
-                    placeholder = { Text("eval JS (e.g. document.title, alert(1))", fontSize = 11.sp, color = Color(0xFF64748B)) },
+                    placeholder = { Text("eval JS (e.g. document.title, alert(1))", fontSize = 12.sp, color = Color(0xFF94A3B8)) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF38BDF8),
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedTextColor = Color(0xFFF1F5F9),
-                        unfocusedTextColor = Color(0xFFF1F5F9)
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = Color(0xFF2563EB),
+                        unfocusedBorderColor = Color(0xFFCBD5E1),
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A)
                     ),
                     modifier = Modifier
                         .weight(1f)
@@ -581,30 +567,33 @@ fun ConsoleTabContent(
                     onClick = { onExecuteRepl(replCommand) },
                     modifier = Modifier.testTag("btn_eval_repl")
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Run JS", tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Run JS", tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp))
                 }
             }
         }
     }
 }
 
+data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
 @Composable
-fun FilterChip(
+fun FilterChipLight(
     label: String,
     isSelected: Boolean,
-    color: Color = Color(0xFF94A3B8),
+    color: Color = Color(0xFF475569),
     onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(6.dp),
-        color = if (isSelected) color.copy(alpha = 0.25f) else Color(0xFF1E293B)
+        color = if (isSelected) color.copy(alpha = 0.15f) else Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) color else Color(0xFFCBD5E1))
     ) {
         Text(
             text = label,
-            fontSize = 10.sp,
+            fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = if (isSelected) color else Color(0xFF94A3B8),
+            color = if (isSelected) color else Color(0xFF475569),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
         )
     }
@@ -625,7 +614,6 @@ fun createConfiguredWebView(context: Context, viewModel: HopWebViewModel): WebVi
             mediaPlaybackRequiresUserGesture = false
         }
 
-        // Bridge to capture JavaScript console logs from the page
         addJavascriptInterface(object : Any() {
             @JavascriptInterface
             fun onConsoleMessage(level: String, message: String, line: Int) {

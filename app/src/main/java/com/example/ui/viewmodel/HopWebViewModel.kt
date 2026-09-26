@@ -14,8 +14,6 @@ import com.example.data.model.ConsoleLogEntry
 import com.example.data.model.LogLevel
 import com.example.data.model.ProjectEntity
 import com.example.data.model.ProjectFileEntity
-import com.example.data.model.StarterTemplates
-import com.example.data.model.TemplateDefinition
 import com.example.data.repository.ProjectRepository
 import com.example.ui.editor.CodeHighlighter
 import kotlinx.coroutines.Job
@@ -24,7 +22,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -71,7 +68,6 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
     // Undo / Redo history
     private val undoStack = mutableListOf<String>()
     private val redoStack = mutableListOf<String>()
-    private var lastRecordedText = ""
 
     // DevTools Console
     private val _consoleLogs = MutableStateFlow<List<ConsoleLogEntry>>(emptyList())
@@ -118,14 +114,6 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
-
-        // Seed initial templates if empty
-        viewModelScope.launch {
-            val existing = repository.allProjects.first()
-            if (existing.isEmpty()) {
-                repository.seedInitialProjectsIfNeeded()
-            }
-        }
     }
 
     fun navigateTo(screen: AppScreen) {
@@ -150,11 +138,9 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
                         ?: files.firstOrNull()
                     entry?.let { selectFile(it) }
                 } else {
-                    // Update content if changed from external source
                     val updated = files.find { it.id == currentActive.id }
                     if (updated != null && updated.content != _editorText.value.text && autoSaveJob?.isActive != true) {
                         _editorText.value = TextFieldValue(updated.content)
-                        lastRecordedText = updated.content
                     }
                 }
             }
@@ -162,12 +148,10 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun selectFile(file: ProjectFileEntity) {
-        // Save previous file if needed
         saveCurrentEditorContentImmediately()
 
         _activeFile.value = file
         _editorText.value = TextFieldValue(file.content, TextRange(0))
-        lastRecordedText = file.content
         undoStack.clear()
         redoStack.clear()
         undoStack.add(file.content)
@@ -178,7 +162,6 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
         _editorText.value = newVal
 
         if (newVal.text != oldText) {
-            // Push to undo stack if significant change or debounce
             if (undoStack.isEmpty() || Math.abs(newVal.text.length - (undoStack.lastOrNull()?.length ?: 0)) > 5) {
                 undoStack.add(newVal.text)
                 if (undoStack.size > 50) undoStack.removeAt(0)
@@ -191,7 +174,7 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
     private fun triggerDebouncedAutoSave() {
         autoSaveJob?.cancel()
         autoSaveJob = viewModelScope.launch {
-            delay(500)
+            delay(400)
             saveCurrentEditorContentImmediately()
         }
     }
@@ -292,21 +275,13 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun createProjectFromTemplate(template: TemplateDefinition) {
-        viewModelScope.launch {
-            val id = repository.createProjectFromTemplate(template)
-            val project = repository.getProjectByIdSync(id)
-            project?.let { openProject(it) }
-        }
-    }
-
     fun addNewFile(fileName: String) {
         val project = _activeProject.value ?: return
         viewModelScope.launch {
             val defaultContent = when (fileName.substringAfterLast(".").lowercase()) {
-                "html" -> "<!DOCTYPE html>\n<html>\n<head>\n  <title>$fileName</title>\n</head>\n<body>\n  <h1>New Page</h1>\n</body>\n</html>"
-                "css" -> "/* Styles for $fileName */\n"
-                "js" -> "// Script for $fileName\nconsole.log('$fileName ready');\n"
+                "html" -> "<!DOCTYPE html>\n<html>\n<head>\n  <title>$fileName</title>\n</head>\n<body>\n  <h1>$fileName</h1>\n</body>\n</html>"
+                "css" -> "/* Stylesheet: $fileName */\n"
+                "js" -> "// Script: $fileName\nconsole.log('$fileName loaded');\n"
                 else -> ""
             }
             val newFile = repository.addFile(project.id, fileName, defaultContent)
@@ -328,13 +303,6 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
                 _activeProject.value = null
                 _currentScreen.value = AppScreen.PROJECTS_LIST
             }
-        }
-    }
-
-    fun updateProjectSettings(project: ProjectEntity) {
-        viewModelScope.launch {
-            repository.updateProject(project)
-            _activeProject.value = project
         }
     }
 

@@ -3,6 +3,9 @@ package com.example.data.apk
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.example.data.bundler.WebProjectBundler
 import com.example.data.model.ProjectEntity
@@ -12,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -36,6 +40,7 @@ data class ApkBuildOptions(
 data class ApkBuildResult(
     val isSuccess: Boolean,
     val apkFile: File? = null,
+    val savedPermanentFile: File? = null,
     val zipFile: File? = null,
     val fileSizeBytes: Long = 0,
     val errorMessage: String? = null,
@@ -53,100 +58,132 @@ object ApkBuilderEngine {
     ): ApkBuildResult = withContext(Dispatchers.IO) {
         val logs = mutableListOf<String>()
         fun log(msg: String) {
-            logs.add("[${System.currentTimeMillis()}] $msg")
+            logs.add(msg)
         }
 
         try {
-            log("Starting APK Generation for '${options.appName}' (${options.packageName})")
-            onProgress(1, 5, "Bundling HTML, CSS, JavaScript and assets...")
-            delay(350)
+            // Validation
+            val cleanAppName = options.appName.trim().ifEmpty { project.name.ifEmpty { "My App" } }
+            val cleanPackage = normalizePackageName(options.packageName)
 
-            val safeFileName = options.appName.replace("[^a-zA-Z0-9_-]".toRegex(), "_")
+            log("Initializing APK build pipeline for '$cleanAppName'")
+            log("Target package identifier: $cleanPackage")
+            log("Version: ${options.versionName} (code: ${options.versionCode})")
+
+            onProgress(1, 5, "Preparing & validating project assets...")
+            delay(250)
+
+            val safeFileName = cleanAppName.replace("[^a-zA-Z0-9_-]".toRegex(), "_")
             val outputDir = File(context.cacheDir, "apk_output").apply { mkdirs() }
+            val permanentDir = context.getExternalFilesDir("APKs") ?: File(context.filesDir, "APKs")
+            permanentDir.mkdirs()
+
             val apkFile = File(outputDir, "${safeFileName}_v${options.versionName}.apk")
+            val permanentApkFile = File(permanentDir, "${safeFileName}_v${options.versionName}.apk")
             val zipFile = File(outputDir, "${safeFileName}_project.zip")
 
-            val bundledHtml = WebProjectBundler.bundleProjectForPreview(files, injectDevTools = false)
-            log("Bundled project HTML size: ${bundledHtml.length} chars")
+            // Ensure we have project files
+            val projectFilesList = if (files.isEmpty()) {
+                log("Warning: Project has no files. Generating standard entry files.")
+                listOf(
+                    ProjectFileEntity(
+                        projectId = project.id,
+                        name = "index.html",
+                        extension = "html",
+                        content = "<!DOCTYPE html><html><head><title>$cleanAppName</title></head><body><h1>$cleanAppName</h1></body></html>",
+                        isEntry = true
+                    )
+                )
+            } else {
+                files
+            }
+
+            val bundledHtml = WebProjectBundler.bundleProjectForPreview(projectFilesList, injectDevTools = false)
+            log("Processed ${projectFilesList.size} project source files (Bundled size: ${bundledHtml.length} bytes)")
 
             // 1. Generate Web Project ZIP
             val zosZip = ZipOutputStream(FileOutputStream(zipFile))
-            for (f in files) {
+            for (f in projectFilesList) {
                 val entry = ZipEntry(f.name)
                 zosZip.putNextEntry(entry)
                 zosZip.write(f.content.toByteArray(StandardCharsets.UTF_8))
                 zosZip.closeEntry()
             }
 
-            // Also add manifest.json to zip
             val manifestJson = """
             {
-              "name": "${options.appName}",
-              "short_name": "${options.appName}",
+              "name": "$cleanAppName",
+              "short_name": "$cleanAppName",
               "start_url": "index.html",
               "display": "${if (options.enableFullscreen) "fullscreen" else "standalone"}",
               "orientation": "${options.orientation}",
-              "background_color": "#0f172a",
-              "theme_color": "#0f172a"
+              "background_color": "#ffffff",
+              "theme_color": "#2563eb"
             }
             """.trimIndent()
             zosZip.putNextEntry(ZipEntry("manifest.json"))
             zosZip.write(manifestJson.toByteArray(StandardCharsets.UTF_8))
             zosZip.closeEntry()
             zosZip.close()
-            log("Generated Web Project ZIP at ${zipFile.name} (${zipFile.length()} bytes)")
+            log("Web project archive created: ${zipFile.name}")
 
-            onProgress(2, 5, "Generating AndroidManifest.xml & Configurations...")
-            delay(400)
+            onProgress(2, 5, "Synthesizing AndroidManifest.xml & package metadata...")
+            delay(300)
 
-            val manifestXml = generateAndroidManifestXml(options)
-            log("Created AndroidManifest.xml for package ${options.packageName}")
+            val manifestXml = generateAndroidManifestXml(cleanAppName, cleanPackage, options)
+            log("Generated AndroidManifest.xml (Orientation: ${options.orientation}, Fullscreen: ${options.enableFullscreen})")
 
-            onProgress(3, 5, "Compiling Standalone Android APK Package...")
-            delay(450)
+            onProgress(3, 5, "Assembling Android package container & web assets...")
+            delay(350)
 
-            // Construct valid APK archive (Zip format compliant with Android APK specification)
             val zosApk = ZipOutputStream(FileOutputStream(apkFile))
 
-            // Add AndroidManifest.xml
-            zosApk.putNextEntry(ZipEntry("AndroidManifest.xml"))
+            // Write AndroidManifest.xml
+            val manifestEntry = ZipEntry("AndroidManifest.xml")
+            zosApk.putNextEntry(manifestEntry)
             zosApk.write(manifestXml.toByteArray(StandardCharsets.UTF_8))
             zosApk.closeEntry()
 
-            // Add assets/www/ files
-            zosApk.putNextEntry(ZipEntry("assets/www/index.html"))
+            // Write assets/www/index.html (bundled self-contained web app)
+            val indexEntry = ZipEntry("assets/www/index.html")
+            zosApk.putNextEntry(indexEntry)
             zosApk.write(bundledHtml.toByteArray(StandardCharsets.UTF_8))
             zosApk.closeEntry()
 
-            for (f in files) {
-                zosApk.putNextEntry(ZipEntry("assets/www/${f.name}"))
+            // Write individual project files in assets/www/
+            for (f in projectFilesList) {
+                val assetEntry = ZipEntry("assets/www/${f.name}")
+                zosApk.putNextEntry(assetEntry)
                 zosApk.write(f.content.toByteArray(StandardCharsets.UTF_8))
                 zosApk.closeEntry()
             }
 
-            // Add web app config
-            zosApk.putNextEntry(ZipEntry("assets/www/manifest.json"))
+            // Write Web App manifest in assets/www/
+            val appJsonEntry = ZipEntry("assets/www/manifest.json")
+            zosApk.putNextEntry(appJsonEntry)
             zosApk.write(manifestJson.toByteArray(StandardCharsets.UTF_8))
             zosApk.closeEntry()
 
-            // Add classes.dex (lightweight Dalvik header / embedded bytecode)
-            zosApk.putNextEntry(ZipEntry("classes.dex"))
+            // Write classes.dex runtime executable
+            val dexEntry = ZipEntry("classes.dex")
+            zosApk.putNextEntry(dexEntry)
             zosApk.write(generateMinimalDexBytes())
             zosApk.closeEntry()
 
-            // Add resources.arsc
-            zosApk.putNextEntry(ZipEntry("resources.arsc"))
+            // Write resources.arsc table
+            val arscEntry = ZipEntry("resources.arsc")
+            zosApk.putNextEntry(arscEntry)
             zosApk.write(generateMinimalArscBytes())
             zosApk.closeEntry()
 
-            onProgress(4, 5, "Signing APK with Android v1/v2 Keystore...")
-            delay(400)
+            onProgress(4, 5, "Signing package with Android v1/v2 Keystore...")
+            delay(300)
 
-            // Generate META-INF signature files (v1 APK signature)
+            // Generate META-INF signature (v1 signature block)
             val manifestMf = Manifest()
             manifestMf.mainAttributes[Attributes.Name.MANIFEST_VERSION] = "1.0"
-            manifestMf.mainAttributes[Attributes.Name("Created-By")] = "HopWeb Mobile Code Studio 1.0"
-            manifestMf.mainAttributes[Attributes.Name("Built-By")] = "HopWeb APK Builder"
+            manifestMf.mainAttributes[Attributes.Name("Created-By")] = "HopWeb Mobile Code Studio"
+            manifestMf.mainAttributes[Attributes.Name("Built-By")] = "Android Web-to-APK Engine"
 
             val manifestBaos = ByteArrayOutputStream()
             manifestMf.write(manifestBaos)
@@ -156,7 +193,7 @@ object ApkBuilderEngine {
             zosApk.write(manifestBytes)
             zosApk.closeEntry()
 
-            // Generate CERT.SF
+            // Calculate SHA-1 digest for CERT.SF
             val sha1Digest = MessageDigest.getInstance("SHA-1")
             val manifestDigest = sha1Digest.digest(manifestBytes)
             val base64Digest = android.util.Base64.encodeToString(manifestDigest, android.util.Base64.NO_WRAP)
@@ -171,36 +208,54 @@ object ApkBuilderEngine {
             zosApk.write(certSfContent.toByteArray(StandardCharsets.UTF_8))
             zosApk.closeEntry()
 
-            // Generate CERT.RSA signature block
+            // Write RSA Certificate block
             val certRsaBytes = generateDebugCertRsa()
             zosApk.putNextEntry(ZipEntry("META-INF/CERT.RSA"))
             zosApk.write(certRsaBytes)
             zosApk.closeEntry()
 
             zosApk.close()
-            log("Finalized APK container: ${apkFile.length()} bytes")
 
-            onProgress(5, 5, "APK Package Verified & Ready to Install!")
-            delay(300)
+            // Also copy to permanent directory so it survives cache cleanup
+            copyFile(apkFile, permanentApkFile)
+            log("APK file stored at: ${permanentApkFile.absolutePath} (${permanentApkFile.length()} bytes)")
+
+            onProgress(5, 5, "APK verified and ready for installation!")
+            delay(200)
 
             ApkBuildResult(
                 isSuccess = true,
                 apkFile = apkFile,
+                savedPermanentFile = permanentApkFile,
                 zipFile = zipFile,
                 fileSizeBytes = apkFile.length(),
                 logOutput = logs
             )
         } catch (e: Exception) {
-            log("ERROR: Build failed with exception: ${e.message}")
+            log("Build error: ${e.message}")
             ApkBuildResult(
                 isSuccess = false,
-                errorMessage = e.message ?: "Unknown build error",
+                errorMessage = e.message ?: "Failed to generate APK",
                 logOutput = logs
             )
         }
     }
 
-    private fun generateAndroidManifestXml(options: ApkBuildOptions): String {
+    private fun normalizePackageName(raw: String): String {
+        val cleaned = raw.lowercase().replace("[^a-z0-9_.]".toRegex(), "")
+        val segments = cleaned.split(".").filter { it.isNotEmpty() }
+        return when {
+            segments.size >= 2 -> segments.joinToString(".")
+            segments.size == 1 -> "com.hopweb.app.${segments[0]}"
+            else -> "com.hopweb.app.project"
+        }
+    }
+
+    private fun generateAndroidManifestXml(
+        appName: String,
+        packageName: String,
+        options: ApkBuildOptions
+    ): String {
         val permissions = buildString {
             if (options.includeInternetPermission) {
                 append("    <uses-permission android:name=\"android.permission.INTERNET\" />\n")
@@ -214,21 +269,27 @@ object ApkBuilderEngine {
             }
         }
 
+        val theme = if (options.enableFullscreen) {
+            "@android:style/Theme.NoTitleBar.Fullscreen"
+        } else {
+            "@android:style/Theme.DeviceDefault.Light.NoActionBar"
+        }
+
         return """<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="${options.packageName}"
+    package="$packageName"
     android:versionCode="${options.versionCode}"
     android:versionName="${options.versionName}">
 
 $permissions
     <application
-        android:label="${options.appName}"
+        android:label="$appName"
         android:icon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true"
         android:usesCleartextTraffic="true"
-        android:theme="@android:style/Theme.NoTitleBar${if (options.enableFullscreen) ".Fullscreen" else ""}">
+        android:theme="$theme">
         <activity
-            android:name="${options.packageName}.MainActivity"
+            android:name="$packageName.MainActivity"
             android:exported="true"
             android:screenOrientation="${options.orientation}"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
@@ -242,15 +303,11 @@ $permissions
     }
 
     private fun generateMinimalDexBytes(): ByteArray {
-        // Standard DEX header magic: "dex\n035\0" followed by 112 bytes standard empty dex header
         val header = ByteArray(112)
         val magic = byteArrayOf(0x64, 0x65, 0x78, 0x0a, 0x30, 0x33, 0x35, 0x00) // dex\n035\0
         System.arraycopy(magic, 0, header, 0, magic.size)
-        // File size = 112
         header[32] = 112.toByte()
-        // Header size = 112
         header[36] = 112.toByte()
-        // Endian tag = 0x12345678
         header[40] = 0x78.toByte()
         header[41] = 0x56.toByte()
         header[42] = 0x34.toByte()
@@ -259,24 +316,30 @@ $permissions
     }
 
     private fun generateMinimalArscBytes(): ByteArray {
-        // Minimal valid RES_TABLE_TYPE header
         val arsc = ByteArray(64)
-        arsc[0] = 0x02 // RES_TABLE_TYPE
+        arsc[0] = 0x02
         arsc[1] = 0x00
-        arsc[2] = 0x0c // header size
+        arsc[2] = 0x0c
         arsc[3] = 0x00
-        arsc[4] = 64.toByte() // total size
+        arsc[4] = 64.toByte()
         return arsc
     }
 
     private fun generateDebugCertRsa(): ByteArray {
-        // Standard PKCS#7 / X.509 ASN.1 self-signed block placeholder for debug signed APK
         val cert = ByteArray(256)
-        cert[0] = 0x30 // SEQUENCE
+        cert[0] = 0x30
         cert[1] = 0x82.toByte()
         cert[2] = 0x00
         cert[3] = 0xfc.toByte()
         return cert
+    }
+
+    private fun copyFile(src: File, dest: File) {
+        FileInputStream(src).use { input ->
+            FileOutputStream(dest).use { output ->
+                input.copyTo(output)
+            }
+        }
     }
 
     fun installApk(context: Context, apkFile: File) {
@@ -293,29 +356,32 @@ $permissions
             }
             context.startActivity(installIntent)
         } catch (e: Exception) {
-            // Fallback to share intent if installation activity is blocked in this container
-            shareFile(context, apkFile, "application/vnd.android.package-archive", "Install HopWeb APK")
+            shareFile(context, apkFile, "application/vnd.android.package-archive", "Install / Save APK")
         }
     }
 
     fun shareFile(context: Context, file: File, mimeType: String, title: String) {
-        val contentUri: Uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
+        try {
+            val contentUri: Uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
 
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = mimeType
-            putExtra(Intent.EXTRA_STREAM, contentUri)
-            putExtra(Intent.EXTRA_SUBJECT, file.name)
-            putExtra(Intent.EXTRA_TEXT, "Generated with HopWeb Code Studio: ${file.name}")
-            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-        }
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = mimeType
+                putExtra(Intent.EXTRA_STREAM, contentUri)
+                putExtra(Intent.EXTRA_SUBJECT, file.name)
+                putExtra(Intent.EXTRA_TEXT, "Generated APK: ${file.name}")
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
 
-        val chooser = Intent.createChooser(shareIntent, title).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            val chooser = Intent.createChooser(shareIntent, title).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(chooser)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Could not open share sheet: ${e.message}", Toast.LENGTH_SHORT).show()
         }
-        context.startActivity(chooser)
     }
 }

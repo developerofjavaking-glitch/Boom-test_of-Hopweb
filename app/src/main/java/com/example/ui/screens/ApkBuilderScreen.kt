@@ -25,8 +25,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.InstallMobile
@@ -45,9 +43,9 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -63,7 +61,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -106,7 +103,7 @@ fun ApkBuilderScreen(
     }
     var versionName by remember { mutableStateOf(project.versionName) }
     var versionCode by remember { mutableIntStateOf(project.versionCode) }
-    var orientation by remember { mutableStateOf(project.orientation) } // unspecified, portrait, landscape
+    var orientation by remember { mutableStateOf(project.orientation) }
     var enableFullscreen by remember { mutableStateOf(project.enableFullscreen) }
     var enableOfflineCache by remember { mutableStateOf(project.enableOfflineCache) }
     var includeInternet by remember { mutableStateOf(true) }
@@ -126,36 +123,36 @@ fun ApkBuilderScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color(0xFFF1F5F9)
+                            tint = Color(0xFF0F172A)
                         )
                     }
                 },
                 title = {
                     Column {
                         Text(
-                            text = "Web to APK Creator",
+                            text = "Web to APK Converter",
                             fontWeight = FontWeight.Bold,
                             fontSize = 17.sp,
-                            color = Color(0xFFF1F5F9)
+                            color = Color(0xFF0F172A)
                         )
                         Text(
-                            text = "Offline & Online Package Studio",
+                            text = "Package project into an Android APK",
                             fontSize = 11.sp,
-                            color = Color(0xFF10B981)
+                            color = Color(0xFF16A34A)
                         )
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.navigateTo(AppScreen.LIVE_PREVIEW) }) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Test Preview", tint = Color(0xFF38BDF8))
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Test Preview", tint = Color(0xFF2563EB))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0F172A)
+                    containerColor = Color.White
                 )
             )
         },
-        containerColor = Color(0xFF090D16),
+        containerColor = Color(0xFFF8FAFC),
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         LazyColumn(
@@ -165,13 +162,13 @@ fun ApkBuilderScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // App Banner Preview Card
+            // App Banner Preview Card (Light Mode)
             item {
                 Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF131B2E)
-                    ),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -179,69 +176,67 @@ fun ApkBuilderScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = Color(project.accentColor).copy(alpha = 0.25f),
-                            modifier = Modifier.size(60.dp)
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFFDCFCE7),
+                            modifier = Modifier.size(56.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.Android,
                                     contentDescription = null,
-                                    tint = Color(project.accentColor),
-                                    modifier = Modifier.size(36.dp)
+                                    tint = Color(0xFF16A34A),
+                                    modifier = Modifier.size(32.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.width(16.dp))
+                        Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = appName.ifEmpty { "My App" },
-                                fontSize = 18.sp,
+                                fontSize = 17.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF1F5F9)
+                                color = Color(0xFF0F172A)
                             )
-                            Spacer(modifier = Modifier.height(3.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = packageName,
                                 fontSize = 12.sp,
-                                color = Color(0xFF38BDF8),
+                                color = Color(0xFF2563EB),
                                 fontFamily = FontFamily.Monospace
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "v$versionName (Build $versionCode) • ${projectFiles.size} Project Files",
+                                text = "v$versionName (Build $versionCode) • ${projectFiles.size} Source Files",
                                 fontSize = 11.sp,
-                                color = Color(0xFF94A3B8)
+                                color = Color(0xFF64748B)
                             )
                         }
                     }
                 }
             }
 
-            // Build Status / Success Card
+            // Build Success Card (Light Mode)
             if (apkBuildStatus == ApkBuildStatus.SUCCESS && apkBuildResult != null) {
                 item {
                     val result = apkBuildResult!!
                     Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF064E3B).copy(alpha = 0.6f)
-                        ),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF86EFAC)),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, Color(0xFF10B981), RoundedCornerShape(20.dp))
                             .testTag("card_apk_success")
                     ) {
                         Column(modifier = Modifier.padding(18.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(28.dp))
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(28.dp))
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
-                                    Text("APK Generated Successfully!", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFFF1F5F9))
+                                    Text("APK Generated Successfully!", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF14532D))
                                     Text(
                                         "${result.apkFile?.name ?: "app.apk"} (${result.fileSizeBytes / 1024} KB)",
                                         fontSize = 12.sp,
-                                        color = Color(0xFF6EE7B7)
+                                        color = Color(0xFF15803D)
                                     )
                                 }
                             }
@@ -259,8 +254,8 @@ fun ApkBuilderScreen(
                                         }
                                     },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF10B981),
-                                        contentColor = Color(0xFF0F172A)
+                                        containerColor = Color(0xFF16A34A),
+                                        contentColor = Color.White
                                     ),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier
@@ -279,7 +274,8 @@ fun ApkBuilderScreen(
                                             ApkBuilderEngine.shareFile(context, file, "application/vnd.android.package-archive", "Share APK")
                                         }
                                     },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF38BDF8)),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2563EB)),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier
                                         .weight(1f)
@@ -300,10 +296,11 @@ fun ApkBuilderScreen(
                                 OutlinedButton(
                                     onClick = {
                                         result.zipFile?.let { zip ->
-                                            ApkBuilderEngine.shareFile(context, zip, "application/zip", "Export Project ZIP")
+                                            ApkBuilderEngine.shareFile(context, zip, "application/zip", "Export Web Project ZIP")
                                         }
                                     },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFCBD5E1)),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF475569)),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
@@ -312,13 +309,13 @@ fun ApkBuilderScreen(
                                     Text("Export ZIP", fontSize = 12.sp)
                                 }
 
-                                // Test in Standalone Mode
+                                // Test in Preview
                                 Button(
                                     onClick = {
                                         viewModel.refreshPreview()
                                         viewModel.navigateTo(AppScreen.LIVE_PREVIEW)
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B), contentColor = Color(0xFFF1F5F9)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB), contentColor = Color.White),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
@@ -333,8 +330,9 @@ fun ApkBuilderScreen(
             } else if (apkBuildStatus == ApkBuildStatus.BUILDING) {
                 item {
                     Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF131B2E)),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("card_apk_building")
@@ -344,21 +342,21 @@ fun ApkBuilderScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             CircularProgressIndicator(
-                                color = Color(0xFF00E5FF),
-                                modifier = Modifier.size(48.dp)
+                                color = Color(0xFF2563EB),
+                                modifier = Modifier.size(44.dp)
                             )
                             Spacer(modifier = Modifier.height(14.dp))
                             Text(
                                 text = "Step ${apkBuildProgress.first} of 5",
-                                color = Color(0xFF00E5FF),
+                                color = Color(0xFF2563EB),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = apkBuildProgress.second,
-                                color = Color(0xFFF1F5F9),
-                                fontSize = 15.sp,
+                                color = Color(0xFF0F172A),
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
                             )
                             Spacer(modifier = Modifier.height(12.dp))
@@ -367,8 +365,8 @@ fun ApkBuilderScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(6.dp),
-                                color = Color(0xFF00E5FF),
-                                trackColor = Color(0xFF1E293B)
+                                color = Color(0xFF2563EB),
+                                trackColor = Color(0xFFDBEAFE)
                             )
                         }
                     }
@@ -376,16 +374,17 @@ fun ApkBuilderScreen(
             } else if (apkBuildStatus == ApkBuildStatus.ERROR) {
                 item {
                     Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF36151E)),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF1F2)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFECDD3)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Error, contentDescription = null, tint = Color(0xFFF43F5E), modifier = Modifier.size(28.dp))
+                            Icon(Icons.Default.Error, contentDescription = null, tint = Color(0xFFE11D48), modifier = Modifier.size(28.dp))
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
-                                Text("Build Error", fontWeight = FontWeight.Bold, color = Color(0xFFF1F5F9))
-                                Text(apkBuildResult?.errorMessage ?: "Failed to generate package", color = Color(0xFFFDA4AF), fontSize = 12.sp)
+                                Text("Build Error", fontWeight = FontWeight.Bold, color = Color(0xFF9F1239))
+                                Text(apkBuildResult?.errorMessage ?: "Failed to generate package", color = Color(0xFFBE123C), fontSize = 12.sp)
                             }
                         }
                     }
@@ -412,30 +411,31 @@ fun ApkBuilderScreen(
                     },
                     enabled = apkBuildStatus != ApkBuildStatus.BUILDING,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF10B981),
-                        contentColor = Color(0xFF0F172A)
+                        containerColor = Color(0xFF16A34A),
+                        contentColor = Color.White
                     ),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp)
+                        .height(52.dp)
                         .testTag("btn_build_apk_now")
                 ) {
-                    Icon(Icons.Default.Android, contentDescription = null, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Default.Android, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (apkBuildStatus == ApkBuildStatus.BUILDING) "Building APK..." else "BUILD & PACK APK NOW",
+                        text = if (apkBuildStatus == ApkBuildStatus.BUILDING) "Packaging APK..." else "BUILD ANDROID APK",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            // Package Configuration Settings
+            // Package Configuration Settings (Light Mode)
             item {
                 Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF131B2E)),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -446,7 +446,7 @@ fun ApkBuilderScreen(
                             text = "PACKAGE CONFIGURATION",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF38BDF8),
+                            color = Color(0xFF2563EB),
                             letterSpacing = 1.sp
                         )
 
@@ -455,6 +455,10 @@ fun ApkBuilderScreen(
                             onValueChange = { appName = it },
                             label = { Text("Application Name") },
                             singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF2563EB),
+                                focusedLabelColor = Color(0xFF2563EB)
+                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("input_apk_app_name")
@@ -466,6 +470,10 @@ fun ApkBuilderScreen(
                             label = { Text("Android Package ID") },
                             placeholder = { Text("com.company.app") },
                             singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF2563EB),
+                                focusedLabelColor = Color(0xFF2563EB)
+                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("input_apk_package_id")
@@ -493,7 +501,7 @@ fun ApkBuilderScreen(
 
                         // Orientation Selector
                         Column {
-                            Text("Screen Orientation", fontSize = 12.sp, color = Color(0xFF94A3B8))
+                            Text("Screen Orientation", fontSize = 12.sp, color = Color(0xFF475569), fontWeight = FontWeight.Medium)
                             Spacer(modifier = Modifier.height(6.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf(
@@ -504,10 +512,10 @@ fun ApkBuilderScreen(
                                     FilterChip(
                                         selected = orientation == id,
                                         onClick = { orientation = id },
-                                        label = { Text(label, fontSize = 11.sp) },
+                                        label = { Text(label, fontSize = 12.sp) },
                                         colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = Color(0xFF38BDF8),
-                                            selectedLabelColor = Color(0xFF0F172A)
+                                            selectedContainerColor = Color(0xFFDBEAFE),
+                                            selectedLabelColor = Color(0xFF1E40AF)
                                         )
                                     )
                                 }
@@ -521,13 +529,13 @@ fun ApkBuilderScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text("Immersive Fullscreen", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFFF1F5F9))
-                                Text("Hides status bar and navigation for games & kiosks", fontSize = 11.sp, color = Color(0xFF94A3B8))
+                                Text("Immersive Fullscreen", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFF0F172A))
+                                Text("Hides status bar and navigation bars", fontSize = 12.sp, color = Color(0xFF64748B))
                             }
                             Switch(
                                 checked = enableFullscreen,
                                 onCheckedChange = { enableFullscreen = it },
-                                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF38BDF8))
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF2563EB))
                             )
                         }
 
@@ -538,13 +546,13 @@ fun ApkBuilderScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text("Offline Caching Mode", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFFF1F5F9))
-                                Text("Bundles 100% of project files into APK assets", fontSize = 11.sp, color = Color(0xFF94A3B8))
+                                Text("Offline Caching Mode", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFF0F172A))
+                                Text("Self-contained local assets inside APK", fontSize = 12.sp, color = Color(0xFF64748B))
                             }
                             Switch(
                                 checked = enableOfflineCache,
                                 onCheckedChange = { enableOfflineCache = it },
-                                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF10B981))
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF16A34A))
                             )
                         }
                     }
@@ -554,8 +562,9 @@ fun ApkBuilderScreen(
             // Android Permissions Card
             item {
                 Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF131B2E)),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -563,13 +572,13 @@ fun ApkBuilderScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Security, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Security, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "APP PERMISSIONS IN MANIFEST",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF38BDF8),
+                                color = Color(0xFF2563EB),
                                 letterSpacing = 1.sp
                             )
                         }
@@ -579,7 +588,7 @@ fun ApkBuilderScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Internet Access (CDN, APIs)", fontSize = 13.sp, color = Color(0xFFE2E8F0))
+                            Text("Internet Access (APIs, Fonts)", fontSize = 13.sp, color = Color(0xFF334155))
                             Switch(checked = includeInternet, onCheckedChange = { includeInternet = it })
                         }
 
@@ -588,7 +597,7 @@ fun ApkBuilderScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Camera Access (Webcam, AR)", fontSize = 13.sp, color = Color(0xFFE2E8F0))
+                            Text("Camera Access (Webcam, AR)", fontSize = 13.sp, color = Color(0xFF334155))
                             Switch(checked = includeCamera, onCheckedChange = { includeCamera = it })
                         }
 
@@ -597,7 +606,7 @@ fun ApkBuilderScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Storage Access (File Picker)", fontSize = 13.sp, color = Color(0xFFE2E8F0))
+                            Text("Storage Access (File Picker)", fontSize = 13.sp, color = Color(0xFF334155))
                             Switch(checked = includeStorage, onCheckedChange = { includeStorage = it })
                         }
                     }
@@ -611,23 +620,24 @@ fun ApkBuilderScreen(
                         Surface(
                             onClick = { showBuildTerminalLogs = !showBuildTerminalLogs },
                             shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFF1E293B),
+                            color = Color(0xFFF1F5F9),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Terminal, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.Terminal, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("View APK Build Logs (${result.logOutput.size} entries)", fontSize = 12.sp, color = Color(0xFF94A3B8))
+                                Text("View Packaging Logs (${result.logOutput.size} steps)", fontSize = 12.sp, color = Color(0xFF475569))
                             }
                         }
 
                         AnimatedVisibility(visible = showBuildTerminalLogs) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF05070D),
+                                color = Color(0xFF0F172A),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 8.dp)
@@ -638,7 +648,7 @@ fun ApkBuilderScreen(
                                             text = logLine,
                                             fontFamily = FontFamily.Monospace,
                                             fontSize = 11.sp,
-                                            color = if (logLine.contains("ERROR")) Color(0xFFF43F5E) else Color(0xFF94A3B8),
+                                            color = if (logLine.contains("Error", ignoreCase = true)) Color(0xFFF43F5E) else Color(0xFFE2E8F0),
                                             lineHeight = 16.sp
                                         )
                                     }
