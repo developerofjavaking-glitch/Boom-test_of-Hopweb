@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "HopWeb Studio"
+rootProject.name = "RopeWeb"
 
 include(":app")

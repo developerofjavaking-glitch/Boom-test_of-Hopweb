@@ -73,9 +73,11 @@ object WebProjectBundler {
      */
     fun bundleProjectForPreview(
         files: List<ProjectFileEntity>,
-        injectDevTools: Boolean = true
+        injectDevTools: Boolean = true,
+        entryFileName: String? = null
     ): String {
-        val entryFile = files.find { it.isEntry || it.name.equals("index.html", ignoreCase = true) }
+        val entryFile = (if (entryFileName != null) files.find { it.name.equals(entryFileName, ignoreCase = true) } else null)
+            ?: files.find { it.isEntry || it.name.equals("index.html", ignoreCase = true) }
             ?: files.find { it.extension.equals("html", ignoreCase = true) }
             ?: return createFallbackHtml(files)
 

@@ -119,13 +119,13 @@ fun ProjectsListScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "HopWeb Studio",
+                                text = "RopeWeb",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
+                                fontSize = 20.sp,
                                 color = Color(0xFF0F172A)
                             )
                             Text(
-                                text = "Web IDE & APK Converter",
+                                text = "Mobile Web IDE & APK Studio",
                                 fontSize = 12.sp,
                                 color = Color(0xFF64748B)
                             )

@@ -26,10 +26,9 @@ class ProjectRepository(private val projectDao: ProjectDao) {
         category: String = "Web App",
         iconType: String = "code",
         accentColor: Long = 0xFF2563EB,
-        packageName: String = "com.hopweb.app." + name.lowercase().replace("[^a-z0-9]".toRegex(), "")
+        packageName: String = "com.ropweb.talha.aijavadevs"
     ): String {
         val projectId = UUID.randomUUID().toString()
-        val safePackage = if (packageName.length < 5) "com.hopweb.app.myproject" else packageName
 
         val project = ProjectEntity(
             id = projectId,
@@ -38,13 +37,12 @@ class ProjectRepository(private val projectDao: ProjectDao) {
             category = category,
             iconType = iconType,
             accentColor = accentColor,
-            packageName = safePackage,
+            packageName = packageName,
             createdAt = System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis()
         )
         projectDao.insertProject(project)
 
-        // Clean starter template: index.html, style.css, script.js
         val htmlFile = ProjectFileEntity(
             projectId = projectId,
             name = "index.html",
@@ -61,7 +59,7 @@ class ProjectRepository(private val projectDao: ProjectDao) {
   <div class="app-card">
     <div class="icon">🚀</div>
     <h1>$name</h1>
-    <p>Build, test, and convert this project to an APK!</p>
+    <p>Powered by RopeWeb Studio</p>
     <button id="counter-btn">Taps: <span id="tap-count">0</span></button>
   </div>
   <script src="script.js"></script>
@@ -135,7 +133,7 @@ button:active {
             projectId = projectId,
             name = "script.js",
             extension = "js",
-            content = """console.log("App '$name' loaded successfully!");
+            content = """console.log("RopeWeb app '$name' initialized!");
 
 let taps = 0;
 const btn = document.getElementById("counter-btn");
@@ -144,7 +142,7 @@ const tapCount = document.getElementById("tap-count");
 btn.addEventListener("click", () => {
   taps++;
   tapCount.textContent = taps;
-  console.log("Button tapped. Total taps:", taps);
+  console.log("Button tapped. Count:", taps);
 });"""
         )
 

@@ -1,8 +1,15 @@
 package com.example.ui.screens
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,14 +26,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FolderZip
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
@@ -37,6 +51,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -61,7 +77,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -97,8 +116,11 @@ fun ApkBuilderScreen(
     var appName by remember { mutableStateOf(project.name) }
     var packageName by remember {
         mutableStateOf(
-            if (project.packageName.isNotBlank()) project.packageName
-            else "com.hopweb.app." + project.name.lowercase().replace("[^a-z0-9]".toRegex(), "")
+            if (project.packageName.isNotBlank() && project.packageName != "com.example") {
+                project.packageName
+            } else {
+                "com.ropweb.talha.aijavadevs"
+            }
         )
     }
     var versionName by remember { mutableStateOf(project.versionName) }
@@ -110,7 +132,42 @@ fun ApkBuilderScreen(
     var includeCamera by remember { mutableStateOf(false) }
     var includeStorage by remember { mutableStateOf(false) }
 
-    var showBuildTerminalLogs by remember { mutableStateOf(false) }
+    // Entry / Index HTML file selection
+    val htmlFiles = remember(projectFiles) {
+        val list = projectFiles.filter { it.extension.equals("html", ignoreCase = true) }.map { it.name }
+        if (list.isEmpty()) listOf("index.html") else list
+    }
+    var selectedEntryFile by remember(htmlFiles) {
+        val defaultFile = htmlFiles.find { it.equals("index.html", ignoreCase = true) } ?: htmlFiles.firstOrNull() ?: "index.html"
+        mutableStateOf(defaultFile)
+    }
+
+    // Custom App Logo selection
+    var customIconBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var customIconBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    // Photo picker for custom logo
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val bytes = stream.readBytes()
+                    val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    if (bmp != null) {
+                        customIconBytes = bytes
+                        customIconBitmap = bmp
+                        Toast.makeText(context, "Custom logo selected!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error loading image: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    var showBuildTerminalLogs by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -130,7 +187,7 @@ fun ApkBuilderScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Web to APK Converter",
+                            text = "RopeWeb APK Studio",
                             fontWeight = FontWeight.Bold,
                             fontSize = 17.sp,
                             color = Color(0xFF0F172A)
@@ -162,7 +219,7 @@ fun ApkBuilderScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // App Banner Preview Card (Light Mode)
+            // App Banner Preview Card with Custom Logo
             item {
                 Card(
                     shape = RoundedCornerShape(18.dp),
@@ -171,51 +228,155 @@ fun ApkBuilderScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = Color(0xFFDCFCE7),
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Android,
-                                    contentDescription = null,
-                                    tint = Color(0xFF16A34A),
-                                    modifier = Modifier.size(32.dp)
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Logo display (Custom or Default)
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFFDCFCE7))
+                                    .border(1.dp, Color(0xFF86EFAC), RoundedCornerShape(16.dp))
+                                    .clickable {
+                                        photoPickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (customIconBitmap != null) {
+                                    Image(
+                                        bitmap = customIconBitmap!!.asImageBitmap(),
+                                        contentDescription = "Custom Logo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Android,
+                                        contentDescription = "Default Icon",
+                                        tint = Color(0xFF16A34A),
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = appName.ifEmpty { "RopeWeb App" },
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = packageName,
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF2563EB),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Entry: $selectedEntryFile • v$versionName ($versionCode)",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF64748B)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = appName.ifEmpty { "My App" },
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0F172A)
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = packageName,
-                                fontSize = 12.sp,
-                                color = Color(0xFF2563EB),
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "v$versionName (Build $versionCode) • ${projectFiles.size} Source Files",
-                                fontSize = 11.sp,
-                                color = Color(0xFF64748B)
-                            )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    photoPickerLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2563EB)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(if (customIconBitmap != null) "Change Logo" else "+ Pick App Logo", fontSize = 12.sp)
+                            }
+
+                            if (customIconBitmap != null) {
+                                OutlinedButton(
+                                    onClick = {
+                                        customIconBytes = null
+                                        customIconBitmap = null
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE11D48)),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFECDD3))
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Reset Logo", modifier = Modifier.size(16.dp))
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Build Success Card (Light Mode)
+            // Entry File (index.html) Selector Card
+            item {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "SELECT MAIN ENTRY FILE (INDEX)",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2563EB),
+                                letterSpacing = 1.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Choose which HTML file will be launched as the main app entry screen:",
+                            fontSize = 12.sp,
+                            color = Color(0xFF64748B)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(htmlFiles) { htmlFile ->
+                                val isSelected = htmlFile == selectedEntryFile
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { selectedEntryFile = htmlFile },
+                                    label = { Text(htmlFile, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                                    leadingIcon = {
+                                        if (isSelected) {
+                                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        }
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFFDBEAFE),
+                                        selectedLabelColor = Color(0xFF1E40AF),
+                                        selectedLeadingIconColor = Color(0xFF1E40AF)
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Build Success Card
             if (apkBuildStatus == ApkBuildStatus.SUCCESS && apkBuildResult != null) {
                 item {
                     val result = apkBuildResult!!
@@ -246,7 +407,6 @@ fun ApkBuilderScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                // Install APK button
                                 Button(
                                     onClick = {
                                         result.apkFile?.let { file ->
@@ -267,11 +427,10 @@ fun ApkBuilderScreen(
                                     Text("Install APK", fontWeight = FontWeight.Bold)
                                 }
 
-                                // Share APK button
                                 OutlinedButton(
                                     onClick = {
                                         result.apkFile?.let { file ->
-                                            ApkBuilderEngine.shareFile(context, file, "application/vnd.android.package-archive", "Share APK")
+                                            ApkBuilderEngine.shareFile(context, file, "application/vnd.android.package-archive", "Share RopeWeb APK")
                                         }
                                     },
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2563EB)),
@@ -292,7 +451,6 @@ fun ApkBuilderScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                // Export ZIP
                                 OutlinedButton(
                                     onClick = {
                                         result.zipFile?.let { zip ->
@@ -309,7 +467,6 @@ fun ApkBuilderScreen(
                                     Text("Export ZIP", fontSize = 12.sp)
                                 }
 
-                                // Test in Preview
                                 Button(
                                     onClick = {
                                         viewModel.refreshPreview()
@@ -397,12 +554,14 @@ fun ApkBuilderScreen(
                     onClick = {
                         val options = ApkBuildOptions(
                             appName = appName.ifBlank { project.name },
-                            packageName = packageName.ifBlank { "com.hopweb.app.project" },
+                            packageName = packageName.ifBlank { "com.ropweb.talha.aijavadevs" },
                             versionName = versionName.ifBlank { "1.0.0" },
                             versionCode = versionCode,
                             orientation = orientation,
                             enableFullscreen = enableFullscreen,
                             enableOfflineCache = enableOfflineCache,
+                            entryFileName = selectedEntryFile,
+                            customIconBytes = customIconBytes,
                             includeInternetPermission = includeInternet,
                             includeCameraPermission = includeCamera,
                             includeStoragePermission = includeStorage
@@ -423,14 +582,14 @@ fun ApkBuilderScreen(
                     Icon(Icons.Default.Android, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (apkBuildStatus == ApkBuildStatus.BUILDING) "Packaging APK..." else "BUILD ANDROID APK",
+                        text = if (apkBuildStatus == ApkBuildStatus.BUILDING) "Building APK..." else "BUILD ANDROID APK NOW",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            // Package Configuration Settings (Light Mode)
+            // Package Configuration Settings
             item {
                 Card(
                     shape = RoundedCornerShape(18.dp),
@@ -468,7 +627,7 @@ fun ApkBuilderScreen(
                             value = packageName,
                             onValueChange = { packageName = it },
                             label = { Text("Android Package ID") },
-                            placeholder = { Text("com.company.app") },
+                            placeholder = { Text("com.ropweb.talha.aijavadevs") },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color(0xFF2563EB),
@@ -630,7 +789,7 @@ fun ApkBuilderScreen(
                             ) {
                                 Icon(Icons.Default.Terminal, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("View Packaging Logs (${result.logOutput.size} steps)", fontSize = 12.sp, color = Color(0xFF475569))
+                                Text("Packaging Logs (${result.logOutput.size} steps)", fontSize = 12.sp, color = Color(0xFF475569))
                             }
                         }
 
@@ -648,7 +807,7 @@ fun ApkBuilderScreen(
                                             text = logLine,
                                             fontFamily = FontFamily.Monospace,
                                             fontSize = 11.sp,
-                                            color = if (logLine.contains("Error", ignoreCase = true)) Color(0xFFF43F5E) else Color(0xFFE2E8F0),
+                                            color = if (logLine.contains("ERROR", ignoreCase = true)) Color(0xFFF43F5E) else Color(0xFFE2E8F0),
                                             lineHeight = 16.sp
                                         )
                                     }

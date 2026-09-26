@@ -11,10 +11,10 @@ data class ProjectEntity(
     val description: String = "",
     val category: String = "Web App",
     val iconType: String = "code",
-    val accentColor: Long = 0xFF38BDF8,
+    val accentColor: Long = 0xFF2563EB,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val packageName: String = "com.hopweb.app.project",
+    val packageName: String = "com.ropweb.talha.aijavadevs",
     val versionName: String = "1.0.0",
     val versionCode: Int = 1,
     val orientation: String = "unspecified", // unspecified, portrait, landscape

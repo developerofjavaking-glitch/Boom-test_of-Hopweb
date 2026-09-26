@@ -174,7 +174,7 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
     private fun triggerDebouncedAutoSave() {
         autoSaveJob?.cancel()
         autoSaveJob = viewModelScope.launch {
-            delay(400)
+            delay(350)
             saveCurrentEditorContentImmediately()
         }
     }
@@ -260,7 +260,8 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
         description: String,
         category: String,
         iconType: String,
-        accentColor: Long
+        accentColor: Long,
+        packageName: String = "com.ropweb.talha.aijavadevs"
     ) {
         viewModelScope.launch {
             val id = repository.createProject(
@@ -268,7 +269,8 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
                 description = description,
                 category = category,
                 iconType = iconType,
-                accentColor = accentColor
+                accentColor = accentColor,
+                packageName = packageName
             )
             val project = repository.getProjectByIdSync(id)
             project?.let { openProject(it) }
@@ -344,18 +346,24 @@ class HopWebViewModel(application: Application) : AndroidViewModel(application) 
         return WebProjectBundler.bundleProjectForPreview(_projectFiles.value, injectDevTools = true)
     }
 
-    // APK Generation
+    // APK Generation with direct database sync
     fun startBuildApk(options: ApkBuildOptions) {
         val project = _activeProject.value ?: return
-        val files = _projectFiles.value
         _apkBuildStatus.value = ApkBuildStatus.BUILDING
-        _apkBuildProgress.value = Pair(1, "Starting APK packager...")
+        _apkBuildProgress.value = Pair(1, "Starting RopeWeb APK packager...")
 
         viewModelScope.launch {
+            // Save any active editor text first
+            saveCurrentEditorContentImmediately()
+
+            // Fetch latest files directly from database to guarantee fresh files
+            val freshFiles = repository.getFilesForProjectSync(project.id)
+            val filesToPackage = if (freshFiles.isNotEmpty()) freshFiles else _projectFiles.value
+
             val result = ApkBuilderEngine.buildApk(
                 context = getApplication(),
                 project = project,
-                files = files,
+                files = filesToPackage,
                 options = options
             ) { step, total, message ->
                 _apkBuildProgress.value = Pair(step, message)
