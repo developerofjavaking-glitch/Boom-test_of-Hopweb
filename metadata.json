@@ -2,5 +2,7 @@
   "name": "RopeWeb",
   "description": "Mobile web code editor & APK creator: write HTML, CSS, JavaScript, live sandbox preview, and package web projects into Android APKs.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

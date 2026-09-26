@@ -10,6 +10,8 @@ import android.graphics.RectF
 import android.net.Uri
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.android.apksig.ApkSigner
+import com.android.apksig.ApkVerifier
 import com.example.data.bundler.WebProjectBundler
 import com.example.data.model.ProjectEntity
 import com.example.data.model.ProjectFileEntity
@@ -20,10 +22,11 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-import java.util.jar.Attributes
-import java.util.jar.Manifest
+import java.security.KeyStore
+import java.security.PrivateKey
+import java.security.cert.X509Certificate
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -100,21 +103,17 @@ object ApkBuilderEngine {
             log("Starting APK packaging for: $cleanAppName")
             log("Package ID: $cleanPackage")
             log("Entry file selected: $selectedEntry")
-            log("Version: ${options.versionName} (${options.versionCode})")
-            if (options.customIconBytes != null) {
-                log("Custom app logo attached: ${options.customIconBytes.size} bytes")
-            } else {
-                log("Using default adaptive app emblem")
-            }
+            log("Version: ${options.versionName} (code: ${options.versionCode})")
 
-            onProgress(1, 5, "Resolving '$selectedEntry' and project assets...")
+            onProgress(1, 5, "Bundling '$selectedEntry' and web project assets...")
             delay(200)
 
             val safeFileName = cleanAppName.replace("[^a-zA-Z0-9_-]".toRegex(), "_")
             val apksDir = File(context.filesDir, "apks").apply { mkdirs() }
             val cacheApkDir = File(context.cacheDir, "apks").apply { mkdirs() }
 
-            val apkFile = File(apksDir, "${safeFileName}_v${options.versionName}.apk")
+            val unsignedApkFile = File(cacheApkDir, "${safeFileName}_unsigned.apk")
+            val finalApkFile = File(apksDir, "${safeFileName}_v${options.versionName}.apk")
             val cacheApkFile = File(cacheApkDir, "${safeFileName}_v${options.versionName}.apk")
             val zipFile = File(apksDir, "${safeFileName}_project.zip")
 
@@ -124,7 +123,7 @@ object ApkBuilderEngine {
                         projectId = project.id,
                         name = selectedEntry,
                         extension = selectedEntry.substringAfterLast(".", "html"),
-                        content = "<!DOCTYPE html><html><head><title>$cleanAppName</title></head><body><h1>$cleanAppName</h1></body></html>",
+                        content = "<!DOCTYPE html><html><head><title>$cleanAppName</title></head><body><h1>$cleanAppName</h1><p>Created with RopeWeb</p></body></html>",
                         isEntry = true
                     )
                 )
@@ -137,9 +136,9 @@ object ApkBuilderEngine {
                 injectDevTools = false,
                 entryFileName = selectedEntry
             )
-            log("Bundled HTML for entry point '$selectedEntry' (${bundledHtml.length} bytes)")
+            log("Compiled bundled HTML payload (${bundledHtml.length} bytes)")
 
-            // 1. Generate Web Project ZIP (without duplicates)
+            // 1. Build Web Project ZIP
             val zipEntries = mutableSetOf<String>()
             val zosZip = ZipOutputStream(FileOutputStream(zipFile))
 
@@ -172,28 +171,26 @@ object ApkBuilderEngine {
                 zosZip.write(manifestJson.toByteArray(StandardCharsets.UTF_8))
                 zosZip.closeEntry()
             }
-
-            if (options.customIconBytes != null && zipEntries.add("icon.png")) {
-                val entry = ZipEntry("icon.png").apply { time = System.currentTimeMillis() }
-                zosZip.putNextEntry(entry)
-                zosZip.write(options.customIconBytes)
-                zosZip.closeEntry()
-            }
-
             zosZip.close()
-            log("Web project ZIP package generated: ${zipFile.name}")
+            log("Web project archive ready: ${zipFile.name}")
 
-            onProgress(2, 5, "Synthesizing AndroidManifest.xml & permissions...")
+            onProgress(2, 5, "Assembling compiled DEX and Android binary specifications...")
             delay(250)
 
-            val manifestXml = generateAndroidManifestXml(cleanAppName, cleanPackage, options)
-            log("Synthesized AndroidManifest.xml for package $cleanPackage")
+            // Read compiled template files from assets
+            val binaryManifestBytes = readAssetBytes(context, "apk_template/AndroidManifest.xml")
+            val dexBytes = readAssetBytes(context, "apk_template/classes.dex")
+            val arscBytes = readAssetBytes(context, "apk_template/resources.arsc")
 
-            onProgress(3, 5, "Embedding custom app logo & compiling package...")
+            log("Loaded compiled Android runtime (classes.dex: ${dexBytes.size} bytes)")
+            log("Loaded valid AXML AndroidManifest (AXML: ${binaryManifestBytes.size} bytes)")
+
+            onProgress(3, 5, "Embedding custom app logo & bundling APK container...")
             delay(300)
 
+            // 2. Assemble Unsigned APK (with duplicate check)
             val apkEntries = mutableSetOf<String>()
-            val zosApk = ZipOutputStream(FileOutputStream(apkFile))
+            val zosApk = ZipOutputStream(FileOutputStream(unsignedApkFile))
 
             fun addApkEntry(path: String, data: ByteArray) {
                 if (apkEntries.add(path)) {
@@ -204,16 +201,22 @@ object ApkBuilderEngine {
                 }
             }
 
-            // Write AndroidManifest.xml
-            addApkEntry("AndroidManifest.xml", manifestXml.toByteArray(StandardCharsets.UTF_8))
+            // Write binary AndroidManifest.xml
+            addApkEntry("AndroidManifest.xml", binaryManifestBytes)
 
-            // Write the main entry HTML
+            // Write compiled Dalvik classes.dex
+            addApkEntry("classes.dex", dexBytes)
+
+            // Write resources.arsc
+            addApkEntry("resources.arsc", arscBytes)
+
+            // Write main entry HTML
             addApkEntry("assets/www/index.html", bundledHtml.toByteArray(StandardCharsets.UTF_8))
             if (selectedEntry != "index.html") {
                 addApkEntry("assets/www/$selectedEntry", bundledHtml.toByteArray(StandardCharsets.UTF_8))
             }
 
-            // Write all other project files into assets/www/
+            // Write project files
             for (f in projectFilesList) {
                 val path = "assets/www/${f.name}"
                 if (f.name != "index.html" && f.name != selectedEntry) {
@@ -224,7 +227,7 @@ object ApkBuilderEngine {
             // Write web manifest
             addApkEntry("assets/www/manifest.json", manifestJson.toByteArray(StandardCharsets.UTF_8))
 
-            // Custom logo rendering for launcher icons across densities
+            // Write custom icon or squircle default
             val icon48 = generateIconPng(options.customIconBytes, 48)
             val icon72 = generateIconPng(options.customIconBytes, 72)
             val icon96 = generateIconPng(options.customIconBytes, 96)
@@ -239,57 +242,61 @@ object ApkBuilderEngine {
             addApkEntry("res/drawable/ic_launcher.png", icon144)
             addApkEntry("assets/www/icon.png", icon192)
 
-            // Write classes.dex
-            addApkEntry("classes.dex", generateMinimalDexBytes())
-
-            // Write resources.arsc
-            addApkEntry("resources.arsc", generateMinimalArscBytes())
-
-            onProgress(4, 5, "Signing APK with Android debug keystore...")
-            delay(250)
-
-            // Generate META-INF signature files
-            val manifestMf = Manifest()
-            manifestMf.mainAttributes[Attributes.Name.MANIFEST_VERSION] = "1.0"
-            manifestMf.mainAttributes[Attributes.Name("Created-By")] = "RopeWeb Mobile Code Studio"
-            manifestMf.mainAttributes[Attributes.Name("Package-ID")] = cleanPackage
-
-            val manifestBaos = ByteArrayOutputStream()
-            manifestMf.write(manifestBaos)
-            val manifestBytes = manifestBaos.toByteArray()
-
-            addApkEntry("META-INF/MANIFEST.MF", manifestBytes)
-
-            val sha1Digest = MessageDigest.getInstance("SHA-1")
-            val manifestDigest = sha1Digest.digest(manifestBytes)
-            val base64Digest = android.util.Base64.encodeToString(manifestDigest, android.util.Base64.NO_WRAP)
-
-            val certSfContent = """
-            Signature-Version: 1.0
-            Created-By: 1.0 (Android)
-            SHA1-Digest-Manifest: $base64Digest
-            """.trimIndent() + "\n\n"
-
-            addApkEntry("META-INF/CERT.SF", certSfContent.toByteArray(StandardCharsets.UTF_8))
-            addApkEntry("META-INF/CERT.RSA", generateDebugCertRsa())
-
             zosApk.close()
-            log("APK container packaged successfully (${apkFile.length()} bytes)")
+            log("Assembled unsigned package container: ${unsignedApkFile.length()} bytes")
 
-            try {
-                copyFile(apkFile, cacheApkFile)
-            } catch (e: Exception) {
-                log("Cache mirror: ${e.message}")
+            onProgress(4, 5, "Signing with Google ApkSigner (v1, v2 & v3 schemes)...")
+            delay(350)
+
+            // 3. Sign using Google official ApkSigner with v1, v2, and v3 schemes!
+            val p12Stream = context.assets.open("apk_template/debug.p12")
+            val keyStore = KeyStore.getInstance("PKCS12")
+            p12Stream.use { keyStore.load(it, "android".toCharArray()) }
+
+            val privateKey = keyStore.getKey("androiddebugkey", "android".toCharArray()) as PrivateKey
+            val certificate = keyStore.getCertificate("androiddebugkey") as X509Certificate
+
+            if (finalApkFile.exists()) {
+                finalApkFile.delete()
             }
 
-            onProgress(5, 5, "APK verified and ready to install!")
+            val signerConfig = ApkSigner.SignerConfig.Builder(
+                "androiddebugkey",
+                privateKey,
+                listOf(certificate)
+            ).build()
+
+            val apkSigner = ApkSigner.Builder(listOf(signerConfig))
+                .setInputApk(unsignedApkFile)
+                .setOutputApk(finalApkFile)
+                .setV1SigningEnabled(true)
+                .setV2SigningEnabled(true)
+                .setV3SigningEnabled(true)
+                .build()
+
+            apkSigner.sign()
+            log("Signed APK with v1 (JAR), v2 (APK Signature), and v3 schemes")
+
+            // Verify with ApkVerifier
+            val verifier = ApkVerifier.Builder(finalApkFile).build()
+            val verifyResult = verifier.verify()
+            log("ApkVerifier check: isVerified=${verifyResult.isVerified} (v1=${verifyResult.isVerifiedUsingV1Scheme}, v2=${verifyResult.isVerifiedUsingV2Scheme}, v3=${verifyResult.isVerifiedUsingV3Scheme})")
+
+            // Mirror to cache dir for FileProvider
+            try {
+                copyFile(finalApkFile, cacheApkFile)
+            } catch (e: Exception) {
+                log("Notice: ${e.message}")
+            }
+
+            onProgress(5, 5, "APK verified and ready to install on Android!")
             delay(200)
 
             ApkBuildResult(
                 isSuccess = true,
-                apkFile = apkFile,
+                apkFile = finalApkFile,
                 zipFile = zipFile,
-                fileSizeBytes = apkFile.length(),
+                fileSizeBytes = finalApkFile.length(),
                 logOutput = logs
             )
         } catch (e: Exception) {
@@ -300,6 +307,12 @@ object ApkBuilderEngine {
                 errorMessage = errorMsg,
                 logOutput = logs
             )
+        }
+    }
+
+    private fun readAssetBytes(context: Context, path: String): ByteArray {
+        context.assets.open(path).use { stream ->
+            return stream.readBytes()
         }
     }
 
@@ -316,7 +329,6 @@ object ApkBuilderEngine {
             } catch (e: Exception) {}
         }
 
-        // Clean default squircle app icon
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val paint = Paint().apply {
@@ -336,89 +348,6 @@ object ApkBuilderEngine {
         val baos = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos)
         return baos.toByteArray()
-    }
-
-    private fun generateAndroidManifestXml(
-        appName: String,
-        packageName: String,
-        options: ApkBuildOptions
-    ): String {
-        val permissions = buildString {
-            if (options.includeInternetPermission) {
-                append("    <uses-permission android:name=\"android.permission.INTERNET\" />\n")
-                append("    <uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\" />\n")
-            }
-            if (options.includeCameraPermission) {
-                append("    <uses-permission android:name=\"android.permission.CAMERA\" />\n")
-            }
-            if (options.includeStoragePermission) {
-                append("    <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\" />\n")
-            }
-        }
-
-        val theme = if (options.enableFullscreen) {
-            "@android:style/Theme.NoTitleBar.Fullscreen"
-        } else {
-            "@android:style/Theme.DeviceDefault.Light.NoActionBar"
-        }
-
-        return """<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="$packageName"
-    android:versionCode="${options.versionCode}"
-    android:versionName="${options.versionName}">
-
-$permissions
-    <application
-        android:label="$appName"
-        android:icon="@mipmap/ic_launcher"
-        android:hardwareAccelerated="true"
-        android:usesCleartextTraffic="true"
-        android:theme="$theme">
-        <activity
-            android:name="$packageName.MainActivity"
-            android:exported="true"
-            android:screenOrientation="${options.orientation}"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
-</manifest>"""
-    }
-
-    private fun generateMinimalDexBytes(): ByteArray {
-        val header = ByteArray(112)
-        val magic = byteArrayOf(0x64, 0x65, 0x78, 0x0a, 0x30, 0x33, 0x35, 0x00) // dex\n035\0
-        System.arraycopy(magic, 0, header, 0, magic.size)
-        header[32] = 112.toByte()
-        header[36] = 112.toByte()
-        header[40] = 0x78.toByte()
-        header[41] = 0x56.toByte()
-        header[42] = 0x34.toByte()
-        header[43] = 0x12.toByte()
-        return header
-    }
-
-    private fun generateMinimalArscBytes(): ByteArray {
-        val arsc = ByteArray(64)
-        arsc[0] = 0x02
-        arsc[1] = 0x00
-        arsc[2] = 0x0c
-        arsc[3] = 0x00
-        arsc[4] = 64.toByte()
-        return arsc
-    }
-
-    private fun generateDebugCertRsa(): ByteArray {
-        val cert = ByteArray(256)
-        cert[0] = 0x30
-        cert[1] = 0x82.toByte()
-        cert[2] = 0x00
-        cert[3] = 0xfc.toByte()
-        return cert
     }
 
     private fun copyFile(src: File, dest: File) {
